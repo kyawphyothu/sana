@@ -70,7 +70,7 @@ func (m model) renderExpensesBox() string {
 	} else {
 		// Calculate available width for table
 		tableWidth := m.width - 6 // width minus borders and padding
-		
+
 		// Column widths (flexible based on terminal width)
 		// Date: 12, Category: 12, Amount: 12, Description: remaining space
 		// Spacing between columns: 2 chars each (6 total for 3 gaps)
@@ -79,12 +79,12 @@ func (m model) renderExpensesBox() string {
 		amountWidth := 12
 		spacing := 2
 		totalSpacing := spacing * 3 // 3 gaps between 4 columns
-		
+
 		descWidth := tableWidth - dateWidth - categoryWidth - amountWidth - totalSpacing
 		if descWidth < 10 {
 			descWidth = 10 // minimum description width
 		}
-		
+
 		// Table header
 		header := fmt.Sprintf("%-*s  %-*s  %-*s  %*s",
 			dateWidth, "Date",
@@ -92,7 +92,7 @@ func (m model) renderExpensesBox() string {
 			categoryWidth, "Category",
 			amountWidth, "Amount")
 		content.WriteString(m.styles.Header.Render(header) + "\n")
-		
+
 		// Separator line
 		separator := strings.Repeat("─", tableWidth)
 		content.WriteString(m.styles.Muted.Render(separator) + "\n")
@@ -110,7 +110,7 @@ func (m model) renderExpensesBox() string {
 		if m.expensesScrollOffset < len(visibleExpenses) {
 			visibleExpenses = visibleExpenses[m.expensesScrollOffset:]
 		}
-		
+
 		rowCount := 0
 		for i, expense := range visibleExpenses {
 			if rowCount >= maxRows {
@@ -129,7 +129,7 @@ func (m model) renderExpensesBox() string {
 				categoryWidth, expense.Type.String(),
 				amountWidth, expense.Amount,
 			)
-			
+
 			// Highlight selected row if this box is selected
 			actualRowIndex := m.expensesScrollOffset + i
 			if m.isSelected(expensesBox) && actualRowIndex == m.expensesSelectedRow {
@@ -186,7 +186,7 @@ func (m model) renderSummaryBox() string {
 
 		// Calculate available width for table
 		tableWidth := m.width - 6 // width minus borders and padding
-		
+
 		// Column widths (flexible based on terminal width)
 		// Amount: 15, Category: remaining space
 		// Spacing: 2 chars
@@ -200,7 +200,7 @@ func (m model) renderSummaryBox() string {
 		// Table header
 		header := fmt.Sprintf("%-*s  %*s", categoryWidth, "Category", amountWidth, "Amount")
 		content.WriteString(m.styles.Header.Render(header) + "\n")
-		
+
 		// Separator line
 		separator := strings.Repeat("─", tableWidth)
 		content.WriteString(m.styles.Muted.Render(separator) + "\n")
@@ -221,12 +221,12 @@ func (m model) renderSummaryBox() string {
 		for category, total := range categoryTotals {
 			categories = append(categories, categoryTotal{category, total})
 		}
-		
-		// Sort categories alphabetically for consistent display
+
+		// Sort categories by total amount in descending order
 		sort.Slice(categories, func(i, j int) bool {
-			return categories[i].category < categories[j].category
+			return categories[i].total > categories[j].total
 		})
-		
+
 		// Apply scroll offset
 		visibleCategories := categories
 		if m.summaryScrollOffset < len(visibleCategories) {
@@ -241,7 +241,7 @@ func (m model) renderSummaryBox() string {
 			}
 
 			line := fmt.Sprintf("%-*s  %*.2f", categoryWidth, cat.category, amountWidth, cat.total)
-			
+
 			// Highlight selected row if this box is selected
 			actualRowIndex := m.summaryScrollOffset + i
 			if m.isSelected(summaryBox) && actualRowIndex == m.summarySelectedRow {
