@@ -33,9 +33,11 @@ run-prod: ## Run the production application
 	$(GO) run $(MAIN_PATH)
 
 .PHONY: install
-install: ## Install the binary to $GOPATH/bin
-	$(GO) install $(LDFLAGS) $(MAIN_PATH)
+install: ## Install the binary to $GOPATH/bin (production mode by default)
+	$(GO) install $(LDFLAGS)
 	@echo "✓ Installed to $(shell go env GOPATH)/bin/$(BINARY_NAME)"
+	@echo "  To run in development mode: SANA_ENV=development sana"
+	@echo "  To run in production mode: sana (or SANA_ENV=production sana)"
 
 .PHONY: clean
 clean: ## Remove build artifacts
@@ -51,7 +53,7 @@ clean-prod: ## Remove production data
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		CONFIG_DIR=$$(go run ./scripts/get-config-dir.go); \
-		rm -f $$CONFIG_DIR/sana.db; \
+		rm -f "$$CONFIG_DIR/sana.db"; \
 		echo "✓ Production database cleaned from $$CONFIG_DIR"; \
 	fi
 
