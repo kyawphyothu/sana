@@ -184,22 +184,27 @@ func DoubleBorderChars() BorderChars {
 
 // DrawBorder manually draws a border around content
 func (s Styles) DrawBorder(content string, width int, borderChars BorderChars, borderColor lipgloss.Color) string {
+	return s.DrawBorderWithTitle(content, width, borderChars, borderColor, "")
+}
+
+// DrawBorderWithTitle manually draws a border around content with optional title in top border
+func (s Styles) DrawBorderWithTitle(content string, width int, borderChars BorderChars, borderColor lipgloss.Color, title string) string {
 	lines := splitLines(content)
-
+	
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
-
+	
 	// Calculate inner width (excluding border characters and padding)
 	innerWidth := width - 4 // 2 for borders + 2 for padding
 	if innerWidth < 1 {
 		innerWidth = 1
 	}
-
+	
 	var result strings.Builder
-
-	// Top border
-	topBorder := borderChars.TopLeft + strings.Repeat(borderChars.Horizontal, width-2) + borderChars.TopRight
-	result.WriteString(borderStyle.Render(topBorder) + "\n")
-
+	
+	// Top border with optional title
+	topBorder := s.buildTopBorder(width, borderChars, title, borderStyle)
+	result.WriteString(topBorder + "\n")
+	
 	// Create padding style with background
 	paddingStyle := lipgloss.NewStyle().Background(s.Theme.Background)
 	
@@ -215,16 +220,21 @@ func (s Styles) DrawBorder(content string, width int, borderChars BorderChars, b
 			borderStyle.Render(borderChars.Vertical)
 		result.WriteString(borderedLine + "\n")
 	}
-
+	
 	// Bottom border
 	bottomBorder := borderChars.BottomLeft + strings.Repeat(borderChars.Horizontal, width-2) + borderChars.BottomRight
 	result.WriteString(borderStyle.Render(bottomBorder))
-
+	
 	return result.String()
 }
 
 // DrawBorderWithHeight draws a border with specific height, padding content vertically
 func (s Styles) DrawBorderWithHeight(content string, width, height int, borderChars BorderChars, borderColor lipgloss.Color) string {
+	return s.DrawBorderWithHeightAndTitle(content, width, height, borderChars, borderColor, "")
+}
+
+// DrawBorderWithHeightAndTitle draws a border with specific height and optional title in top border
+func (s Styles) DrawBorderWithHeightAndTitle(content string, width, height int, borderChars BorderChars, borderColor lipgloss.Color, title string) string {
 	lines := splitLines(content)
 
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
@@ -241,9 +251,9 @@ func (s Styles) DrawBorderWithHeight(content string, width, height int, borderCh
 
 	var result strings.Builder
 
-	// Top border
-	topBorder := borderChars.TopLeft + strings.Repeat(borderChars.Horizontal, width-2) + borderChars.TopRight
-	result.WriteString(borderStyle.Render(topBorder) + "\n")
+	// Top border with optional title
+	topBorder := s.buildTopBorder(width, borderChars, title, borderStyle)
+	result.WriteString(topBorder + "\n")
 
 	// Create padding style with background
 	paddingStyle := lipgloss.NewStyle().Background(s.Theme.Background)
@@ -276,6 +286,40 @@ func (s Styles) DrawBorderWithHeight(content string, width, height int, borderCh
 }
 
 // Helper functions
+
+// buildTopBorder creates the top border line with optional title
+func (s Styles) buildTopBorder(width int, borderChars BorderChars, title string, borderStyle lipgloss.Style) string {
+	if title == "" {
+		// No title, just plain border
+		return borderStyle.Render(borderChars.TopLeft + strings.Repeat(borderChars.Horizontal, width-2) + borderChars.TopRight)
+	}
+	
+	// Add spacing around title: "─ Title ─"
+	titleWithSpacing := " " + title + " "
+	titleWidth := lipgloss.Width(titleWithSpacing)
+	
+	// Calculate remaining horizontal line space
+	remainingWidth := width - 2 - titleWidth // -2 for corner chars
+	if remainingWidth < 0 {
+		remainingWidth = 0
+	}
+	
+	// Split remaining space (more on the right)
+	leftWidth := 1
+	rightWidth := remainingWidth - leftWidth
+	if rightWidth < 0 {
+		rightWidth = 0
+	}
+	
+	// Build: ╭─ Title ─────────╮
+	topBorder := borderChars.TopLeft +
+		strings.Repeat(borderChars.Horizontal, leftWidth) +
+		titleWithSpacing +
+		strings.Repeat(borderChars.Horizontal, rightWidth) +
+		borderChars.TopRight
+	
+	return borderStyle.Render(topBorder)
+}
 
 // splitLines splits content by newlines
 func splitLines(content string) []string {

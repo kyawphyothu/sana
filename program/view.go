@@ -48,12 +48,13 @@ func (m model) renderTitleBox() string {
 
 	content := m.styles.Title.Render(sanaFiglet)
 
-	return m.styles.DrawBorderWithHeight(
+	return m.styles.DrawBorderWithHeightAndTitle(
 		content,
 		m.width,
 		titleHeight,
 		RoundedBorderChars(),
 		m.styles.Theme.Primary,
+		"Sana",
 	)
 }
 
@@ -66,7 +67,6 @@ func (m model) renderStatsBox() string {
 	// Calculate total balance
 	total := m.calculateTotal()
 
-	content.WriteString(m.styles.Header.Render("Balance") + "\n")
 	content.WriteString(m.styles.Line.Render(fmt.Sprintf("$%.2f", total)) + "\n\n")
 	content.WriteString(m.styles.Muted.Render(fmt.Sprintf("Total expenses: %d", len(m.expenses))))
 
@@ -83,12 +83,13 @@ func (m model) renderStatsBox() string {
 		borderColor = m.styles.Theme.Selected
 	}
 
-	return m.styles.DrawBorderWithHeight(
+	return m.styles.DrawBorderWithHeightAndTitle(
 		content.String(),
 		m.width,
 		boxHeight,
 		RoundedBorderChars(),
 		borderColor,
+		"Balance",
 	)
 }
 
@@ -100,8 +101,6 @@ func (m model) renderExpensesBox() string {
 	boxHeight := m.height - titleHeight - statsHeight
 
 	var content strings.Builder
-
-	content.WriteString(m.styles.Header.Render("Recent Expenses:") + "\n")
 
 	if len(m.expenses) == 0 {
 		content.WriteString(m.styles.Muted.Render("No expenses yet"))
@@ -121,12 +120,13 @@ func (m model) renderExpensesBox() string {
 		borderColor = m.styles.Theme.Selected
 	}
 
-	return m.styles.DrawBorderWithHeight(
+	return m.styles.DrawBorderWithHeightAndTitle(
 		content.String(),
 		m.width,
 		boxHeight,
 		RoundedBorderChars(),
 		borderColor,
+		"Expenses",
 	)
 }
 
