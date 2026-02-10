@@ -12,8 +12,23 @@ A simple terminal-based expense tracker built with Go.
 
 ## Usage
 
+### Run the development application
+
 ```bash
-go run .
+make run
+```
+
+### Run the production application
+
+```bash
+make run-prod
+```
+
+or
+
+```bash
+make install
+sana
 ```
 
 ## Keybindings
