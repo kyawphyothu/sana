@@ -2,6 +2,7 @@ package program
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -104,8 +105,14 @@ func (m model) renderExpensesBox() string {
 		}
 
 		// Display expenses (already sorted by date desc from DB)
+		// Apply scroll offset
+		visibleExpenses := m.expenses
+		if m.expensesScrollOffset < len(visibleExpenses) {
+			visibleExpenses = visibleExpenses[m.expensesScrollOffset:]
+		}
+		
 		rowCount := 0
-		for _, expense := range m.expenses {
+		for i, expense := range visibleExpenses {
 			if rowCount >= maxRows {
 				break // Don't overflow
 			}
@@ -122,7 +129,14 @@ func (m model) renderExpensesBox() string {
 				categoryWidth, expense.Type.String(),
 				amountWidth, expense.Amount,
 			)
-			content.WriteString(m.styles.Line.Render(line) + "\n")
+			
+			// Highlight selected row if this box is selected
+			actualRowIndex := m.expensesScrollOffset + i
+			if m.isSelected(expensesBox) && actualRowIndex == m.expensesSelectedRow {
+				content.WriteString(m.styles.Selected.Render(line) + "\n")
+			} else {
+				content.WriteString(m.styles.Line.Render(line) + "\n")
+			}
 			rowCount++
 		}
 	}
@@ -198,15 +212,43 @@ func (m model) renderSummaryBox() string {
 			maxRows = 1
 		}
 
+		// Convert map to sorted slice for consistent ordering
+		type categoryTotal struct {
+			category string
+			total    float64
+		}
+		var categories []categoryTotal
+		for category, total := range categoryTotals {
+			categories = append(categories, categoryTotal{category, total})
+		}
+		
+		// Sort categories alphabetically for consistent display
+		sort.Slice(categories, func(i, j int) bool {
+			return categories[i].category < categories[j].category
+		})
+		
+		// Apply scroll offset
+		visibleCategories := categories
+		if m.summaryScrollOffset < len(visibleCategories) {
+			visibleCategories = visibleCategories[m.summaryScrollOffset:]
+		}
+
 		// Display category totals
 		rowCount := 0
-		for category, total := range categoryTotals {
+		for i, cat := range visibleCategories {
 			if rowCount >= maxRows {
 				break // Don't overflow
 			}
 
-			line := fmt.Sprintf("%-*s  %*.2f", categoryWidth, category, amountWidth, total)
-			content.WriteString(m.styles.Line.Render(line) + "\n")
+			line := fmt.Sprintf("%-*s  %*.2f", categoryWidth, cat.category, amountWidth, cat.total)
+			
+			// Highlight selected row if this box is selected
+			actualRowIndex := m.summaryScrollOffset + i
+			if m.isSelected(summaryBox) && actualRowIndex == m.summarySelectedRow {
+				content.WriteString(m.styles.Selected.Render(line) + "\n")
+			} else {
+				content.WriteString(m.styles.Line.Render(line) + "\n")
+			}
 			rowCount++
 		}
 
