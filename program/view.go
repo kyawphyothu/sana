@@ -2,7 +2,6 @@ package program
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -178,12 +177,6 @@ func (m model) renderSummaryBox() string {
 	if len(m.expenses) == 0 {
 		content.WriteString(m.styles.Muted.Render("No expenses to summarize"))
 	} else {
-		// Group expenses by category
-		categoryTotals := make(map[string]float64)
-		for _, expense := range m.expenses {
-			categoryTotals[expense.Type.String()] += expense.Amount
-		}
-
 		// Calculate available width for table
 		tableWidth := m.width - 6 // width minus borders and padding
 
@@ -212,35 +205,20 @@ func (m model) renderSummaryBox() string {
 			maxRows = 1
 		}
 
-		// Convert map to sorted slice for consistent ordering
-		type categoryTotal struct {
-			category string
-			total    float64
-		}
-		var categories []categoryTotal
-		for category, total := range categoryTotals {
-			categories = append(categories, categoryTotal{category, total})
-		}
-
-		// Sort categories by total amount in descending order
-		sort.Slice(categories, func(i, j int) bool {
-			return categories[i].total > categories[j].total
-		})
-
-		// Apply scroll offset
-		visibleCategories := categories
-		if m.summaryScrollOffset < len(visibleCategories) {
-			visibleCategories = visibleCategories[m.summaryScrollOffset:]
+		// Apply scroll offset (using database summary)
+		visibleSummary := m.summary
+		if m.summaryScrollOffset < len(visibleSummary) {
+			visibleSummary = visibleSummary[m.summaryScrollOffset:]
 		}
 
 		// Display category totals
 		rowCount := 0
-		for i, cat := range visibleCategories {
+		for i, cat := range visibleSummary {
 			if rowCount >= maxRows {
 				break // Don't overflow
 			}
 
-			line := fmt.Sprintf("%-*s  %*.2f", categoryWidth, cat.category, amountWidth, cat.total)
+			line := fmt.Sprintf("%-*s  %*.2f", categoryWidth, cat.Category, amountWidth, cat.Total)
 
 			// Highlight selected row if this box is selected
 			actualRowIndex := m.summaryScrollOffset + i
@@ -256,8 +234,7 @@ func (m model) renderSummaryBox() string {
 		content.WriteString(m.styles.Muted.Render(separator) + "\n")
 
 		// Grand total
-		grandTotal := m.calculateTotal()
-		totalLine := fmt.Sprintf("%-*s  %*.2f", categoryWidth, "Total", amountWidth, grandTotal)
+		totalLine := fmt.Sprintf("%-*s  %*.2f", categoryWidth, "Total", amountWidth, m.total)
 		content.WriteString(m.styles.Header.Render(totalLine))
 	}
 
@@ -294,14 +271,6 @@ func (m model) renderTooSmallMessage() string {
 
 // Helper functions
 
-// calculateTotal calculates the total of all expenses
-func (m model) calculateTotal() float64 {
-	var total float64
-	for _, expense := range m.expenses {
-		total += expense.Amount
-	}
-	return total
-}
 
 // calculateMiddleBoxHeight calculates height for the stats box (middle box)
 func (m model) calculateMiddleBoxHeight() int {

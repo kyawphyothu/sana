@@ -56,3 +56,9 @@ type Expense struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
+
+// CategorySummary represents aggregated expense data by category
+type CategorySummary struct {
+	Category string
+	Total    float64
+}

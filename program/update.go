@@ -9,12 +9,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
-	case expensesLoadedMsg:
+	case dataLoadedMsg:
 		if msg.Err != nil {
 			m.err = msg.Err
 			return m, nil
 		}
 		m.expenses = msg.Expenses
+		m.summary = msg.Summary
+		m.total = msg.Total
 		return m, nil
 
 	case tea.KeyMsg:
@@ -28,9 +30,9 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
-	case "r": // Refresh expenses
+	case "r": // Refresh data
 		m.resetRowSelection()
-		return m, loadExpenses(m.db)
+		return m, loadData(m.db)
 	case "1": // Select expenses box
 		m.selected = expensesBox
 	case "2": // Select summary box

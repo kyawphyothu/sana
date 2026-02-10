@@ -19,6 +19,8 @@ const (
 type model struct {
 	db       *sql.DB
 	expenses []types.Expense
+	summary  []types.CategorySummary // Category summaries from database
+	total    float64                 // Grand total from database
 	styles   Styles
 
 	width  int
@@ -35,9 +37,11 @@ type model struct {
 	err error
 }
 
-// expensesLoadedMsg is sent when ListExpenses finishes (in Init).
-type expensesLoadedMsg struct {
+// dataLoadedMsg is sent when data loading finishes (in Init).
+type dataLoadedMsg struct {
 	Expenses []types.Expense
+	Summary  []types.CategorySummary
+	Total    float64
 	Err      error
 }
 
@@ -48,6 +52,7 @@ func InitialModel(db *sql.DB) model {
 	return model{
 		db:                   db,
 		expenses:             []types.Expense{},
+		summary:              []types.CategorySummary{},
 		styles:               styles,
 		selected:             expensesBox, // Start with expenses box selected
 		expensesSelectedRow:  0,
@@ -58,16 +63,32 @@ func InitialModel(db *sql.DB) model {
 }
 
 func (m model) Init() tea.Cmd {
-	return loadExpenses(m.db)
+	return loadData(m.db)
 }
 
-// loadExpenses returns a command that loads expenses from the database
-func loadExpenses(db *sql.DB) tea.Cmd {
+// loadData returns a command that loads expenses, summary, and total from the database
+func loadData(db *sql.DB) tea.Cmd {
 	return func() tea.Msg {
 		expenses, err := database.ListExpenses(db)
-		return expensesLoadedMsg{
+		if err != nil {
+			return dataLoadedMsg{Err: err}
+		}
+		
+		summary, err := database.GetExpensesSummary(db)
+		if err != nil {
+			return dataLoadedMsg{Err: err}
+		}
+		
+		total, err := database.GetTotalExpenses(db)
+		if err != nil {
+			return dataLoadedMsg{Err: err}
+		}
+		
+		return dataLoadedMsg{
 			Expenses: expenses,
-			Err:      err,
+			Summary:  summary,
+			Total:    total,
+			Err:      nil,
 		}
 	}
 }
@@ -113,15 +134,7 @@ func (m *model) moveRowDown(maxVisibleRows int) {
 			}
 		}
 	case summaryBox:
-		// Count categories
-		categoryCount := 0
-		categoryTotals := make(map[string]float64)
-		for _, expense := range m.expenses {
-			categoryTotals[expense.Type.String()] += expense.Amount
-		}
-		categoryCount = len(categoryTotals)
-
-		maxRow := categoryCount - 1
+		maxRow := len(m.summary) - 1
 		if m.summarySelectedRow < maxRow {
 			m.summarySelectedRow++
 			// Scroll down if needed
@@ -129,7 +142,7 @@ func (m *model) moveRowDown(maxVisibleRows int) {
 				m.summaryScrollOffset = m.summarySelectedRow - maxVisibleRows + 1
 			}
 			// Ensure we don't scroll past the end
-			maxScrollOffset := categoryCount - maxVisibleRows
+			maxScrollOffset := len(m.summary) - maxVisibleRows
 			if maxScrollOffset < 0 {
 				maxScrollOffset = 0
 			}
@@ -150,3 +163,4 @@ func (m *model) resetRowSelection() {
 func (m model) isSelected(box selectedBox) bool {
 	return m.selected == box
 }
+
