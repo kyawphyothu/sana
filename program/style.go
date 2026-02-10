@@ -189,6 +189,11 @@ func (s Styles) DrawBorder(content string, width int, borderChars BorderChars, b
 
 // DrawBorderWithTitle manually draws a border around content with optional title in top border
 func (s Styles) DrawBorderWithTitle(content string, width int, borderChars BorderChars, borderColor lipgloss.Color, title string) string {
+	return s.DrawBorderWithTitleBold(content, width, borderChars, borderColor, title, false)
+}
+
+// DrawBorderWithTitleBold manually draws a border with optional title and bold option
+func (s Styles) DrawBorderWithTitleBold(content string, width int, borderChars BorderChars, borderColor lipgloss.Color, title string, bold bool) string {
 	lines := splitLines(content)
 	
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
@@ -202,7 +207,7 @@ func (s Styles) DrawBorderWithTitle(content string, width int, borderChars Borde
 	var result strings.Builder
 	
 	// Top border with optional title
-	topBorder := s.buildTopBorder(width, borderChars, title, borderStyle)
+	topBorder := s.buildTopBorder(width, borderChars, title, borderStyle, bold)
 	result.WriteString(topBorder + "\n")
 	
 	// Create padding style with background
@@ -235,6 +240,11 @@ func (s Styles) DrawBorderWithHeight(content string, width, height int, borderCh
 
 // DrawBorderWithHeightAndTitle draws a border with specific height and optional title in top border
 func (s Styles) DrawBorderWithHeightAndTitle(content string, width, height int, borderChars BorderChars, borderColor lipgloss.Color, title string) string {
+	return s.DrawBorderWithHeightAndTitleBold(content, width, height, borderChars, borderColor, title, false)
+}
+
+// DrawBorderWithHeightAndTitleBold draws a border with specific height, optional title, and bold option
+func (s Styles) DrawBorderWithHeightAndTitleBold(content string, width, height int, borderChars BorderChars, borderColor lipgloss.Color, title string, bold bool) string {
 	lines := splitLines(content)
 
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
@@ -252,7 +262,7 @@ func (s Styles) DrawBorderWithHeightAndTitle(content string, width, height int, 
 	var result strings.Builder
 
 	// Top border with optional title
-	topBorder := s.buildTopBorder(width, borderChars, title, borderStyle)
+	topBorder := s.buildTopBorder(width, borderChars, title, borderStyle, bold)
 	result.WriteString(topBorder + "\n")
 
 	// Create padding style with background
@@ -287,15 +297,22 @@ func (s Styles) DrawBorderWithHeightAndTitle(content string, width, height int, 
 
 // Helper functions
 
-// buildTopBorder creates the top border line with optional title
-func (s Styles) buildTopBorder(width int, borderChars BorderChars, title string, borderStyle lipgloss.Style) string {
+// buildTopBorder creates the top border line with optional title and bold option
+func (s Styles) buildTopBorder(width int, borderChars BorderChars, title string, borderStyle lipgloss.Style, bold bool) string {
 	if title == "" {
 		// No title, just plain border
 		return borderStyle.Render(borderChars.TopLeft + strings.Repeat(borderChars.Horizontal, width-2) + borderChars.TopRight)
 	}
 	
+	// Style the title text (always apply foreground and background)
+	titleStyle := lipgloss.NewStyle().Foreground(borderStyle.GetForeground()).Background(s.Theme.Background)
+	if bold {
+		titleStyle = titleStyle.Bold(true)
+	}
+	titleText := titleStyle.Render(title)
+	
 	// Add spacing around title: "─ Title ─"
-	titleWithSpacing := " " + title + " "
+	titleWithSpacing := " " + titleText + " "
 	titleWidth := lipgloss.Width(titleWithSpacing)
 	
 	// Calculate remaining horizontal line space
@@ -312,13 +329,14 @@ func (s Styles) buildTopBorder(width int, borderChars BorderChars, title string,
 	}
 	
 	// Build: ╭─ Title ─────────╮
-	topBorder := borderChars.TopLeft +
-		strings.Repeat(borderChars.Horizontal, leftWidth) +
-		titleWithSpacing +
-		strings.Repeat(borderChars.Horizontal, rightWidth) +
-		borderChars.TopRight
+	// Corner and lines styled with borderStyle, title styled separately if bold
+	leftPart := borderStyle.Render(borderChars.TopLeft + strings.Repeat(borderChars.Horizontal, leftWidth))
+	rightPart := borderStyle.Render(strings.Repeat(borderChars.Horizontal, rightWidth) + borderChars.TopRight)
 	
-	return borderStyle.Render(topBorder)
+	// Space padding around title with background
+	spacePadding := lipgloss.NewStyle().Background(s.Theme.Background).Render(" ")
+	
+	return leftPart + spacePadding + titleText + spacePadding + rightPart
 }
 
 // splitLines splits content by newlines

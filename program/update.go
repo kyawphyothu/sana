@@ -30,10 +30,10 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "r": // Refresh expenses
 		return m, loadExpenses(m.db)
-	case "h": // Move left (to expenses box)
-		m.moveLeft()
-	case "l": // Move right (to stats box)
-		m.moveRight()
+	case "1": // Select expenses box
+		m.selected = expensesBox
+	case "2": // Select summary box
+		m.selected = summaryBox
 	}
 
 	return m, nil

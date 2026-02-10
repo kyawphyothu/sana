@@ -12,8 +12,8 @@ import (
 type selectedBox int
 
 const (
-	statsBox selectedBox = iota
-	expensesBox
+	expensesBox selectedBox = iota
+	summaryBox
 )
 
 type model struct {
@@ -43,7 +43,7 @@ func InitialModel(db *sql.DB) model {
 		db:       db,
 		expenses: []types.Expense{},
 		styles:   styles,
-		selected: statsBox, // Start with stats box selected
+		selected: expensesBox, // Start with expenses box selected
 	}
 }
 
@@ -63,18 +63,18 @@ func loadExpenses(db *sql.DB) tea.Cmd {
 }
 
 func (m *model) moveLeft() {
-	if m.selected > statsBox {
+	if m.selected > expensesBox {
 		m.selected--
 	} else {
-		m.selected = expensesBox
+		m.selected = summaryBox
 	}
 }
 
 func (m *model) moveRight() {
-	if m.selected < expensesBox {
+	if m.selected < summaryBox {
 		m.selected++
 	} else {
-		m.selected = statsBox
+		m.selected = expensesBox
 	}
 }
 
