@@ -15,6 +15,7 @@ type Theme struct {
 	Success    lipgloss.Color
 	Error      lipgloss.Color
 	Selected   lipgloss.Color
+	Border     lipgloss.Color
 }
 
 // DefaultTheme returns Sana's purple theme
@@ -42,6 +43,7 @@ type Theme struct {
 // Error             → #E07A7A
 // Success           → #7BD88F
 // Warning           → #F2C97D
+//
 // DefaultTheme returns Sana's purple theme
 func DefaultTheme() Theme {
 	return Theme{
@@ -52,6 +54,7 @@ func DefaultTheme() Theme {
 		Success:    lipgloss.Color("#88D4AB"), // Brighter green
 		Error:      lipgloss.Color("#FF9B9B"), // Brighter red
 		Selected:   lipgloss.Color("#5FC9F8"), // Brighter cyan
+		Border:     lipgloss.Color("#454666"), // Border color
 	}
 }
 
@@ -195,41 +198,41 @@ func (s Styles) DrawBorderWithTitle(content string, width int, borderChars Borde
 // DrawBorderWithTitleBold manually draws a border with optional title and bold option
 func (s Styles) DrawBorderWithTitleBold(content string, width int, borderChars BorderChars, borderColor lipgloss.Color, title string, bold bool) string {
 	lines := splitLines(content)
-	
+
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
-	
+
 	// Calculate inner width (excluding border characters and padding)
 	innerWidth := width - 4 // 2 for borders + 2 for padding
 	if innerWidth < 1 {
 		innerWidth = 1
 	}
-	
+
 	var result strings.Builder
-	
+
 	// Top border with optional title
 	topBorder := s.buildTopBorder(width, borderChars, title, borderStyle, bold)
 	result.WriteString(topBorder + "\n")
-	
+
 	// Create padding style with background
 	paddingStyle := lipgloss.NewStyle().Background(s.Theme.Background)
-	
+
 	// Content lines with side borders
 	for _, line := range lines {
 		// Pad line to fit width (don't re-style, content is already styled)
 		paddedLine := padToWidth(line, innerWidth, s.Theme.Background)
-		
-		borderedLine := borderStyle.Render(borderChars.Vertical) + 
-			paddingStyle.Render(" ") + 
-			paddedLine + 
-			paddingStyle.Render(" ") + 
+
+		borderedLine := borderStyle.Render(borderChars.Vertical) +
+			paddingStyle.Render(" ") +
+			paddedLine +
+			paddingStyle.Render(" ") +
 			borderStyle.Render(borderChars.Vertical)
 		result.WriteString(borderedLine + "\n")
 	}
-	
+
 	// Bottom border
 	bottomBorder := borderChars.BottomLeft + strings.Repeat(borderChars.Horizontal, width-2) + borderChars.BottomRight
 	result.WriteString(borderStyle.Render(bottomBorder))
-	
+
 	return result.String()
 }
 
@@ -267,7 +270,7 @@ func (s Styles) DrawBorderWithHeightAndTitleBold(content string, width, height i
 
 	// Create padding style with background
 	paddingStyle := lipgloss.NewStyle().Background(s.Theme.Background)
-	
+
 	// Pad lines to fill height
 	for i := 0; i < innerHeight; i++ {
 		var line string
@@ -276,14 +279,14 @@ func (s Styles) DrawBorderWithHeightAndTitleBold(content string, width, height i
 		} else {
 			line = ""
 		}
-		
+
 		// Pad line to fit width (don't re-style, content is already styled)
 		paddedLine := padToWidth(line, innerWidth, s.Theme.Background)
-		
-		borderedLine := borderStyle.Render(borderChars.Vertical) + 
-			paddingStyle.Render(" ") + 
-			paddedLine + 
-			paddingStyle.Render(" ") + 
+
+		borderedLine := borderStyle.Render(borderChars.Vertical) +
+			paddingStyle.Render(" ") +
+			paddedLine +
+			paddingStyle.Render(" ") +
 			borderStyle.Render(borderChars.Vertical)
 		result.WriteString(borderedLine + "\n")
 	}
@@ -303,39 +306,39 @@ func (s Styles) buildTopBorder(width int, borderChars BorderChars, title string,
 		// No title, just plain border
 		return borderStyle.Render(borderChars.TopLeft + strings.Repeat(borderChars.Horizontal, width-2) + borderChars.TopRight)
 	}
-	
+
 	// Style the title text (always apply foreground and background)
 	titleStyle := lipgloss.NewStyle().Foreground(borderStyle.GetForeground()).Background(s.Theme.Background)
 	if bold {
 		titleStyle = titleStyle.Bold(true)
 	}
 	titleText := titleStyle.Render(title)
-	
+
 	// Add spacing around title: "─ Title ─"
 	titleWithSpacing := " " + titleText + " "
 	titleWidth := lipgloss.Width(titleWithSpacing)
-	
+
 	// Calculate remaining horizontal line space
 	remainingWidth := width - 2 - titleWidth // -2 for corner chars
 	if remainingWidth < 0 {
 		remainingWidth = 0
 	}
-	
+
 	// Split remaining space (more on the right)
 	leftWidth := 1
 	rightWidth := remainingWidth - leftWidth
 	if rightWidth < 0 {
 		rightWidth = 0
 	}
-	
+
 	// Build: ╭─ Title ─────────╮
 	// Corner and lines styled with borderStyle, title styled separately if bold
 	leftPart := borderStyle.Render(borderChars.TopLeft + strings.Repeat(borderChars.Horizontal, leftWidth))
 	rightPart := borderStyle.Render(strings.Repeat(borderChars.Horizontal, rightWidth) + borderChars.TopRight)
-	
+
 	// Space padding around title with background
 	spacePadding := lipgloss.NewStyle().Background(s.Theme.Background).Render(" ")
-	
+
 	return leftPart + spacePadding + titleText + spacePadding + rightPart
 }
 
@@ -348,18 +351,18 @@ func splitLines(content string) []string {
 func padToWidth(s string, width int, bgColor lipgloss.Color) string {
 	// Use lipgloss to measure the actual rendered width
 	currentWidth := lipgloss.Width(s)
-	
+
 	if currentWidth >= width {
 		// Truncate if needed using lipgloss's truncate
 		return lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render(s)
 	}
-	
+
 	// Create a style with background for the entire width
 	// This ensures the background fills the entire line
 	lineStyle := lipgloss.NewStyle().
 		Background(bgColor).
 		Width(width).
 		Inline(true)
-	
+
 	return lineStyle.Render(s)
 }

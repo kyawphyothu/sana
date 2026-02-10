@@ -33,11 +33,11 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "r": // Refresh data
 		m.resetRowSelection()
 		return m, loadData(m.db)
-	case "1": // Select expenses box
+	case "e": // Select expenses box
 		m.selected = expensesBox
 	case "a": // Select add box
 		m.selected = addBox
-	case "2": // Select summary box
+	case "s": // Select summary box
 		m.selected = summaryBox
 	case "j": // Move selection down
 		// Calculate max visible rows based on box height

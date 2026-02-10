@@ -60,8 +60,8 @@ func (m model) renderTitleBox() string {
 		content,
 		m.width,
 		titleHeight,
-		RoundedBorderChars(),
-		m.styles.Theme.Primary,
+		DoubleBorderChars(),
+		m.styles.Theme.Border,
 		"Sana",
 	)
 }
@@ -157,9 +157,9 @@ func (m model) renderExpensesBox() string {
 
 	// Choose border color based on selection
 	isSelected := m.isSelected(expensesBox)
-	borderColor := m.styles.Theme.Primary
+	borderColor := m.styles.Theme.Border
 	if isSelected {
-		borderColor = m.styles.Theme.Selected
+		borderColor = m.styles.Theme.Primary
 	}
 
 	// Format title with bold for selected part
@@ -185,9 +185,9 @@ func (m model) renderAddBox() string {
 
 	// Choose border color based on selection
 	isSelected := m.isSelected(addBox)
-	borderColor := m.styles.Theme.Primary
+	borderColor := m.styles.Theme.Border
 	if isSelected {
-		borderColor = m.styles.Theme.Selected
+		borderColor = m.styles.Theme.Primary
 	}
 
 	// Format title with bold for selected part
@@ -277,12 +277,15 @@ func (m model) renderSummaryBox() string {
 		content.WriteString(m.styles.Header.Render(totalLine))
 	}
 
-	// Choose border color and bold based on selection
+	// Choose border color based on selection
 	isSelected := m.isSelected(summaryBox)
-	borderColor := m.styles.Theme.Primary
+	borderColor := m.styles.Theme.Border
 	if isSelected {
-		borderColor = m.styles.Theme.Selected
+		borderColor = m.styles.Theme.Primary
 	}
+
+	// Format title with bold if selected
+	title := m.formatSummaryTitle(borderColor, isSelected)
 
 	return m.styles.DrawBorderWithHeightAndTitleBold(
 		content.String(),
@@ -290,8 +293,8 @@ func (m model) renderSummaryBox() string {
 		boxHeight,
 		RoundedBorderChars(),
 		borderColor,
-		"[2]Summary",
-		isSelected,
+		title,
+		false, // We handle bold in the title itself
 	)
 }
 
@@ -322,9 +325,33 @@ func (m model) calculateMiddleBoxHeight() int {
 	return remainingHeight / 2
 }
 
-// formatMiddleBoxTitle formats the title for the middle box with bold and color for selected section
+// formatSummaryTitle formats the title for the summary box with bold if selected
+func (m model) formatSummaryTitle(borderColor lipgloss.Color, isSelected bool) string {
+	// Shortcut key style - stands out
+	shortcutStyle := lipgloss.NewStyle().
+		Foreground(m.styles.Theme.Success).
+		Background(m.styles.Theme.Background)
+
+	var textStyle lipgloss.Style
+	if isSelected {
+		// Selected: bright color + bold for maximum visibility
+		textStyle = lipgloss.NewStyle().
+			Foreground(m.styles.Theme.Selected).
+			Background(m.styles.Theme.Background).
+			Bold(true)
+	} else {
+		// Unselected: muted color for readability without distraction
+		textStyle = lipgloss.NewStyle().
+			Foreground(m.styles.Theme.Muted).
+			Background(m.styles.Theme.Background)
+	}
+
+	return shortcutStyle.Render("[s]") + textStyle.Render("Summary")
+}
+
+// formatMiddleBoxTitle formats the title for the middle box with bold for selected section
 func (m model) formatMiddleBoxTitle(currentBox selectedBox, borderColor lipgloss.Color) string {
-	// Create styles for selected (bold + bright color) and unselected (muted color)
+	// Create styles for selected (bright + bold for visibility) and unselected (muted for readability)
 	selectedStyle := lipgloss.NewStyle().
 		Foreground(m.styles.Theme.Selected).
 		Background(m.styles.Theme.Background).
@@ -334,14 +361,19 @@ func (m model) formatMiddleBoxTitle(currentBox selectedBox, borderColor lipgloss
 		Foreground(m.styles.Theme.Muted).
 		Background(m.styles.Theme.Background)
 
-	normalStyle := lipgloss.NewStyle().
+	// Shortcut key style - stands out
+	shortcutStyle := lipgloss.NewStyle().
+		Foreground(m.styles.Theme.Success).
+		Background(m.styles.Theme.Background)
+
+	separatorStyle := lipgloss.NewStyle().
 		Foreground(borderColor).
 		Background(m.styles.Theme.Background)
 
-	// Build title with appropriate bold and color sections based on m.selected
+	// Build title with appropriate bold sections based on m.selected
 	var expensesText, addText string
 
-	// Only bold/highlight if the corresponding box is actually selected
+	// Only bold and brighten if the corresponding box is actually selected
 	if m.selected == expensesBox {
 		expensesText = selectedStyle.Render("Expenses")
 		addText = unselectedStyle.Render("Add Expense")
@@ -354,9 +386,10 @@ func (m model) formatMiddleBoxTitle(currentBox selectedBox, borderColor lipgloss
 		addText = unselectedStyle.Render("Add Expense")
 	}
 
-	title := normalStyle.Render("[1]") +
+	title := shortcutStyle.Render("[e]") +
 		expensesText +
-		normalStyle.Render(" - [a]") +
+		separatorStyle.Render(" - ") +
+		shortcutStyle.Render("[a]") +
 		addText
 
 	return title
