@@ -23,11 +23,17 @@ func LoadConfig() (*Config, error) {
 }
 
 func getDBPath() string {
-	// configDir, err := os.UserConfigDir()
-	// if err != nil {
-	// 	return filepath.Join(".", dbFileName)
-	// }
-	configDir := "./data"
+	env := os.Getenv("SANA_ENV")
+	var configDir string
+	var err error
+	if env == "development" {
+		configDir = "./data"
+	} else {
+		configDir, err = os.UserConfigDir()
+		if err != nil {
+			return filepath.Join(".", dbFileName)
+		}
+	}
 
 	appName := "sana"
 	appDir := filepath.Join(configDir, appName)

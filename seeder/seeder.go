@@ -1,13 +1,16 @@
-package database
+package main
 
 import (
-	"database/sql"
+	"fmt"
+	"os"
 	"time"
 
+	"github.com/kyawphyothu/sana/config"
+	"github.com/kyawphyothu/sana/database"
 	"github.com/kyawphyothu/sana/types"
 )
 
-func Seed(db *sql.DB) error {
+func main() {
 	expenses := []types.Expense{
 		{
 			Date:        time.Now().UTC(),
@@ -47,14 +50,34 @@ func Seed(db *sql.DB) error {
 		},
 	}
 
+	config, err := config.LoadConfig()
+	if err != nil {
+		fmt.Println("Error loading config:", err)
+		os.Exit(1)
+	}
+
+	db, err := database.NewDB(config)
+	if err != nil {
+		fmt.Println("Error creating database:", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	if err := database.Migrate(db); err != nil {
+		fmt.Println("Error running migrations:", err)
+		os.Exit(1)
+	}
+
 	for _, e := range expenses {
 		_, err := db.Exec(
 			`INSERT INTO expenses (date, amount, description, expense_type) VALUES (?, ?, ?, ?)`,
 			e.Date, e.Amount, e.Description, string(e.Type),
 		)
 		if err != nil {
-			return err
+			fmt.Println("Error inserting expense:", err)
+			os.Exit(1)
 		}
 	}
-	return nil
+	fmt.Println("Database seeded successfully")
+	os.Exit(0)
 }
