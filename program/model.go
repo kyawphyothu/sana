@@ -72,22 +72,6 @@ func loadExpenses(db *sql.DB) tea.Cmd {
 	}
 }
 
-func (m *model) moveLeft() {
-	if m.selected > expensesBox {
-		m.selected--
-	} else {
-		m.selected = summaryBox
-	}
-}
-
-func (m *model) moveRight() {
-	if m.selected < summaryBox {
-		m.selected++
-	} else {
-		m.selected = expensesBox
-	}
-}
-
 func (m *model) moveRowUp() {
 	switch m.selected {
 	case expensesBox:
