@@ -35,6 +35,8 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, loadData(m.db)
 	case "1": // Select expenses box
 		m.selected = expensesBox
+	case "a": // Select add box
+		m.selected = addBox
 	case "2": // Select summary box
 		m.selected = summaryBox
 	case "j": // Move selection down
@@ -57,6 +59,9 @@ func (m model) calculateMaxVisibleRows() int {
 	case expensesBox:
 		// Expenses box: boxHeight - 2 (borders) - 2 (header + separator)
 		return boxHeight - 4
+	case addBox:
+		// Add box doesn't have rows to navigate
+		return 1
 	case summaryBox:
 		// Summary box: boxHeight - 2 (borders) - 2 (header + separator) - 2 (separator + total)
 		return boxHeight - 6

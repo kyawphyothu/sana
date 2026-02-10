@@ -30,14 +30,22 @@ func (m model) View() string {
 
 	// Build the three sections
 	titleBox := m.renderTitleBox()
-	expensesBox := m.renderExpensesBox()
+
+	// Conditionally render middle box based on selection
+	var middleBox string
+	if m.selected == addBox {
+		middleBox = m.renderAddBox()
+	} else {
+		middleBox = m.renderExpensesBox()
+	}
+
 	summaryBox := m.renderSummaryBox()
 
 	// Stack vertically and return directly (no wrapper needed)
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		titleBox,
-		expensesBox,
+		middleBox,
 		summaryBox,
 	)
 }
@@ -147,12 +155,15 @@ func (m model) renderExpensesBox() string {
 		content.WriteString(errorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
 	}
 
-	// Choose border color and bold based on selection
+	// Choose border color based on selection
 	isSelected := m.isSelected(expensesBox)
 	borderColor := m.styles.Theme.Primary
 	if isSelected {
 		borderColor = m.styles.Theme.Selected
 	}
+
+	// Format title with bold for selected part
+	title := m.formatMiddleBoxTitle(expensesBox, borderColor)
 
 	return m.styles.DrawBorderWithHeightAndTitleBold(
 		content.String(),
@@ -160,8 +171,36 @@ func (m model) renderExpensesBox() string {
 		boxHeight,
 		RoundedBorderChars(),
 		borderColor,
-		"[1]Expenses",
-		isSelected,
+		title,
+		false, // We handle bold in the title itself
+	)
+}
+
+// renderAddBox creates the add expense form section (middle box)
+func (m model) renderAddBox() string {
+	boxHeight := m.calculateMiddleBoxHeight()
+
+	var content strings.Builder
+	content.WriteString(m.styles.Muted.Render("Add expense form will go here..."))
+
+	// Choose border color based on selection
+	isSelected := m.isSelected(addBox)
+	borderColor := m.styles.Theme.Primary
+	if isSelected {
+		borderColor = m.styles.Theme.Selected
+	}
+
+	// Format title with bold for selected part
+	title := m.formatMiddleBoxTitle(addBox, borderColor)
+
+	return m.styles.DrawBorderWithHeightAndTitleBold(
+		content.String(),
+		m.width,
+		boxHeight,
+		RoundedBorderChars(),
+		borderColor,
+		title,
+		false, // We handle bold in the title itself
 	)
 }
 
@@ -271,7 +310,6 @@ func (m model) renderTooSmallMessage() string {
 
 // Helper functions
 
-
 // calculateMiddleBoxHeight calculates height for the stats box (middle box)
 func (m model) calculateMiddleBoxHeight() int {
 	const titleHeight = 7
@@ -282,4 +320,44 @@ func (m model) calculateMiddleBoxHeight() int {
 	// Give stats box half of remaining space (rounded down)
 	// The expenses box will get all remaining space to fill terminal completely
 	return remainingHeight / 2
+}
+
+// formatMiddleBoxTitle formats the title for the middle box with bold and color for selected section
+func (m model) formatMiddleBoxTitle(currentBox selectedBox, borderColor lipgloss.Color) string {
+	// Create styles for selected (bold + bright color) and unselected (muted color)
+	selectedStyle := lipgloss.NewStyle().
+		Foreground(m.styles.Theme.Selected).
+		Background(m.styles.Theme.Background).
+		Bold(true)
+
+	unselectedStyle := lipgloss.NewStyle().
+		Foreground(m.styles.Theme.Muted).
+		Background(m.styles.Theme.Background)
+
+	normalStyle := lipgloss.NewStyle().
+		Foreground(borderColor).
+		Background(m.styles.Theme.Background)
+
+	// Build title with appropriate bold and color sections based on m.selected
+	var expensesText, addText string
+
+	// Only bold/highlight if the corresponding box is actually selected
+	if m.selected == expensesBox {
+		expensesText = selectedStyle.Render("Expenses")
+		addText = unselectedStyle.Render("Add Expense")
+	} else if m.selected == addBox {
+		expensesText = unselectedStyle.Render("Expenses")
+		addText = selectedStyle.Render("Add Expense")
+	} else {
+		// summaryBox or other is selected - show both as unselected
+		expensesText = unselectedStyle.Render("Expenses")
+		addText = unselectedStyle.Render("Add Expense")
+	}
+
+	title := normalStyle.Render("[1]") +
+		expensesText +
+		normalStyle.Render(" - [a]") +
+		addText
+
+	return title
 }

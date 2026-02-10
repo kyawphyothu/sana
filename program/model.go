@@ -13,6 +13,7 @@ type selectedBox int
 
 const (
 	expensesBox selectedBox = iota
+	addBox
 	summaryBox
 )
 
