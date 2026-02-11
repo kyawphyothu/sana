@@ -60,5 +60,6 @@ type Expense struct {
 // CategorySummary represents aggregated expense data by category
 type CategorySummary struct {
 	Category string
+	Count    int
 	Total    float64
 }

@@ -222,14 +222,16 @@ func (m model) renderSummaryBox() string {
 		// Amount: 15, Category: remaining space
 		// Spacing: 2 chars
 		amountWidth := 15
+		countWidth := 5
 		spacing := 2
-		categoryWidth := tableWidth - amountWidth - spacing
+		totalSpacing := spacing * 2 // 2 gaps between 3 columns
+		categoryWidth := tableWidth - amountWidth - countWidth - totalSpacing
 		if categoryWidth < 10 {
 			categoryWidth = 10 // minimum category width
 		}
 
 		// Table header
-		header := fmt.Sprintf("%-*s  %*s", categoryWidth, "Category", amountWidth, "Amount")
+		header := fmt.Sprintf("%-*s  %*s  %*s", categoryWidth, "Category", countWidth, "Count", amountWidth, "Amount")
 		content.WriteString(m.styles.Header.Render(header) + "\n")
 
 		// Separator line
@@ -256,7 +258,7 @@ func (m model) renderSummaryBox() string {
 				break // Don't overflow
 			}
 
-			line := fmt.Sprintf("%-*s  %*.2f", categoryWidth, cat.Category, amountWidth, cat.Total)
+			line := fmt.Sprintf("%-*s  %*d  %*.2f", categoryWidth, cat.Category, countWidth, cat.Count, amountWidth, cat.Total)
 
 			// Highlight selected row if this box is selected
 			actualRowIndex := m.summaryScrollOffset + i
@@ -272,7 +274,7 @@ func (m model) renderSummaryBox() string {
 		content.WriteString(m.styles.Muted.Render(separator) + "\n")
 
 		// Grand total
-		totalLine := fmt.Sprintf("%-*s  %*.2f", categoryWidth, "Total", amountWidth, m.total)
+		totalLine := fmt.Sprintf("%-*s  %*s  %*.2f", categoryWidth, "Total", countWidth, "", amountWidth, m.total)
 		content.WriteString(m.styles.Header.Render(totalLine))
 	}
 

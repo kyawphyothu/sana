@@ -34,10 +34,10 @@ func ListExpenses(db *sql.DB) ([]types.Expense, error) {
 // GetExpensesSummary returns expenses grouped by category with totals, ordered alphabetically
 func GetExpensesSummary(db *sql.DB) ([]types.CategorySummary, error) {
 	rows, err := db.Query(`
-		SELECT expense_type, SUM(amount) as total
+		SELECT expense_type, SUM(amount) as total, COUNT(*) as count
 		FROM expenses
 		GROUP BY expense_type
-		ORDER BY total DESC
+		ORDER BY total DESC, count DESC
 	`)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,8 @@ func GetExpensesSummary(db *sql.DB) ([]types.CategorySummary, error) {
 	for rows.Next() {
 		var typStr string
 		var total float64
-		if err := rows.Scan(&typStr, &total); err != nil {
+		var count int
+		if err := rows.Scan(&typStr, &total, &count); err != nil {
 			return nil, err
 		}
 
@@ -57,6 +58,7 @@ func GetExpensesSummary(db *sql.DB) ([]types.CategorySummary, error) {
 		summaries = append(summaries, types.CategorySummary{
 			Category: expType.String(),
 			Total:    total,
+			Count:    count,
 		})
 	}
 	return summaries, rows.Err()
