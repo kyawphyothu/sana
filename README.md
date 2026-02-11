@@ -38,5 +38,7 @@ sana
 - `e` - Select Expenses box
 - `j` - Move selection down
 - `k` - Move selection up
+- `g` - Move selection to top
+- `G` - Move selection to bottom
 - `r` - Refresh data
 - `q` / `ctrl+c` - Quit
