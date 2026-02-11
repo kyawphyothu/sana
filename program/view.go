@@ -8,10 +8,9 @@ import (
 )
 
 const (
-	sanaFiglet = `   ____
-  / __/__ ____  ___ _
- _\ \/ _ ` + "`" + `/ _ \/ _ ` + "`" + `/
-/___/\_,_/_//_/\_,_/`
+	sanaFiglet = `░█▀▀░█▀█░█▀█░█▀█
+░▀▀█░█▀█░█░█░█▀█
+░▀▀▀░▀░▀░▀░▀░▀░▀`
 
 	minWidth  = 70
 	minHeight = 20
@@ -52,7 +51,7 @@ func (m model) View() string {
 
 // renderTitleBox creates the top title section with Sana figlet
 func (m model) renderTitleBox() string {
-	const titleHeight = 7
+	const titleHeight = 5
 
 	content := m.styles.Title.Render(sanaFiglet)
 
@@ -207,7 +206,7 @@ func (m model) renderAddBox() string {
 // renderSummaryBox creates the summary section grouped by category (third box)
 func (m model) renderSummaryBox() string {
 	// Calculate height: use all remaining space after title and expenses box
-	const titleHeight = 7
+	const titleHeight = 5
 	expensesHeight := m.calculateMiddleBoxHeight()
 	boxHeight := m.height - titleHeight - expensesHeight
 
@@ -315,7 +314,7 @@ func (m model) renderTooSmallMessage() string {
 
 // calculateMiddleBoxHeight calculates height for the stats box (middle box)
 func (m model) calculateMiddleBoxHeight() int {
-	const titleHeight = 7
+	const titleHeight = 5
 
 	// Remaining height after title box
 	remainingHeight := m.height - titleHeight
