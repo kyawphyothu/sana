@@ -74,17 +74,17 @@ func loadData(db *sql.DB) tea.Cmd {
 		if err != nil {
 			return dataLoadedMsg{Err: err}
 		}
-		
+
 		summary, err := database.GetExpensesSummary(db)
 		if err != nil {
 			return dataLoadedMsg{Err: err}
 		}
-		
+
 		total, err := database.GetTotalExpenses(db)
 		if err != nil {
 			return dataLoadedMsg{Err: err}
 		}
-		
+
 		return dataLoadedMsg{
 			Expenses: expenses,
 			Summary:  summary,
@@ -121,35 +121,13 @@ func (m *model) moveRowDown(maxVisibleRows int) {
 		maxRow := len(m.expenses) - 1
 		if m.expensesSelectedRow < maxRow {
 			m.expensesSelectedRow++
-			// Scroll down if needed
-			if m.expensesSelectedRow >= m.expensesScrollOffset+maxVisibleRows {
-				m.expensesScrollOffset = m.expensesSelectedRow - maxVisibleRows + 1
-			}
-			// Ensure we don't scroll past the end
-			maxScrollOffset := len(m.expenses) - maxVisibleRows
-			if maxScrollOffset < 0 {
-				maxScrollOffset = 0
-			}
-			if m.expensesScrollOffset > maxScrollOffset {
-				m.expensesScrollOffset = maxScrollOffset
-			}
+			m.adjustScrollOffset(maxVisibleRows)
 		}
 	case summaryBox:
 		maxRow := len(m.summary) - 1
 		if m.summarySelectedRow < maxRow {
 			m.summarySelectedRow++
-			// Scroll down if needed
-			if m.summarySelectedRow >= m.summaryScrollOffset+maxVisibleRows {
-				m.summaryScrollOffset = m.summarySelectedRow - maxVisibleRows + 1
-			}
-			// Ensure we don't scroll past the end
-			maxScrollOffset := len(m.summary) - maxVisibleRows
-			if maxScrollOffset < 0 {
-				maxScrollOffset = 0
-			}
-			if m.summaryScrollOffset > maxScrollOffset {
-				m.summaryScrollOffset = maxScrollOffset
-			}
+			m.adjustScrollOffset(maxVisibleRows)
 		}
 	}
 }
@@ -165,3 +143,55 @@ func (m model) isSelected(box selectedBox) bool {
 	return m.selected == box
 }
 
+func (m *model) moveRowToTop() {
+	switch m.selected {
+	case expensesBox:
+		m.expensesSelectedRow = 0
+		m.expensesScrollOffset = 0
+	case summaryBox:
+		m.summarySelectedRow = 0
+		m.summaryScrollOffset = 0
+	}
+}
+
+func (m *model) moveRowToBottom(maxVisibleRows int) {
+	switch m.selected {
+	case expensesBox:
+		m.expensesSelectedRow = len(m.expenses) - 1
+		m.adjustScrollOffset(maxVisibleRows)
+	case summaryBox:
+		m.summarySelectedRow = len(m.summary) - 1
+		m.adjustScrollOffset(maxVisibleRows)
+	}
+}
+
+// adjustScrollOffset adjusts the scroll offset to the selected row (ensure row visible)
+func (m *model) adjustScrollOffset(maxVisibleRows int) {
+	switch m.selected {
+	case expensesBox:
+		// Scroll down if needed
+		if m.expensesSelectedRow >= m.expensesScrollOffset+maxVisibleRows {
+			m.expensesScrollOffset = m.expensesSelectedRow - maxVisibleRows + 1
+		}
+		// Ensure we don't scroll past the end
+		maxScrollOffset := len(m.expenses) - maxVisibleRows
+		if maxScrollOffset < 0 {
+			maxScrollOffset = 0
+		}
+		if m.expensesScrollOffset > maxScrollOffset {
+			m.expensesScrollOffset = maxScrollOffset
+		}
+	case summaryBox:
+		if m.summarySelectedRow >= m.summaryScrollOffset+maxVisibleRows {
+			m.summaryScrollOffset = m.summarySelectedRow - maxVisibleRows + 1
+		}
+		// Ensure we don't scroll past the end
+		maxScrollOffset := len(m.summary) - maxVisibleRows
+		if maxScrollOffset < 0 {
+			maxScrollOffset = 0
+		}
+		if m.summaryScrollOffset > maxScrollOffset {
+			m.summaryScrollOffset = maxScrollOffset
+		}
+	}
+}

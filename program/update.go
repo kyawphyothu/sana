@@ -45,6 +45,11 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.moveRowDown(maxRows)
 	case "k": // Move selection up
 		m.moveRowUp()
+	case "g":
+		m.moveRowToTop()
+	case "G":
+		maxRows := m.calculateMaxVisibleRows()
+		m.moveRowToBottom(maxRows)
 	}
 
 	return m, nil
