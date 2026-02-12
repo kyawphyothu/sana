@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kyawphyothu/sana/types"
 )
@@ -18,25 +19,27 @@ const (
 )
 
 // View renders the entire UI
-func (m model) View() string {
+func (m model) View() tea.View {
 	if m.width == 0 || m.height == 0 {
-		return "Loading..."
+		return tea.NewView("Loading...")
 	}
 
 	// Check if terminal is too small
 	if m.width < minWidth || m.height < minHeight {
-		return m.renderTooSmallMessage()
+		return tea.NewView(m.renderTooSmallMessage())
 	}
 
 	// Build the three sections
 	titleBox := m.renderTitleBox()
 
 	if m.selected == addBox {
-		return lipgloss.JoinVertical(
+		res := tea.NewView(lipgloss.JoinVertical(
 			lipgloss.Left,
 			titleBox,
 			m.renderAddBox(),
-		)
+		))
+		res.AltScreen = true
+		return res
 	}
 
 	expensesBox := m.renderExpensesBox()
@@ -44,12 +47,14 @@ func (m model) View() string {
 	summaryBox := m.renderSummaryBox()
 
 	// Stack vertically and return directly (no wrapper needed)
-	return lipgloss.JoinVertical(
+	res := tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Left,
 		titleBox,
 		expensesBox,
 		summaryBox,
-	)
+	))
+	res.AltScreen = true
+	return res
 }
 
 // renderTitleBox creates the top title section with Sana figlet
@@ -136,11 +141,11 @@ func (m model) renderExpensesBox() string {
 			localDate := expense.Date.Local()
 			formattedAmount := formatAmountWithCommas(expense.Amount)
 			categoryText := expense.Type.String()
-			
+
 			// Check if this row is selected
 			actualRowIndex := m.expensesScrollOffset + i
 			isRowSelected := m.isSelected(expensesBox) && actualRowIndex == m.expensesSelectedRow
-			
+
 			// Determine background and foreground colors based on selection
 			var bgColor lipgloss.Color
 			var fgColor lipgloss.Color
@@ -151,28 +156,28 @@ func (m model) renderExpensesBox() string {
 				bgColor = m.styles.Theme.Background
 				fgColor = m.styles.Theme.Foreground
 			}
-			
+
 			// Create a base style for the row
 			baseStyle := lipgloss.NewStyle().
 				Foreground(fgColor).
 				Background(bgColor)
-			
+
 			// Add bold styling for selected rows
 			if isRowSelected {
 				baseStyle = baseStyle.Bold(true)
 			}
-			
+
 			// Style each column part with proper width and alignment
 			datePart := baseStyle.
 				Width(dateWidth).
 				Align(lipgloss.Left).
 				Render(localDate.Format("2006-01-02 15:04:05"))
-			
+
 			descPart := baseStyle.
 				Width(descWidth).
 				Align(lipgloss.Left).
 				Render(desc)
-			
+
 			// Category gets its own color but same background and bold if selected
 			categoryColor := CategoryColor(categoryText)
 			// Invert category color when row is selected
@@ -188,18 +193,18 @@ func (m model) renderExpensesBox() string {
 				categoryStyle = categoryStyle.Bold(true)
 			}
 			categoryPart := categoryStyle.Render(categoryText)
-			
+
 			amountPart := baseStyle.
 				Width(amountWidth).
 				Align(lipgloss.Right).
 				Render(formattedAmount)
-			
+
 			// Spacing between columns (2 spaces) with background
 			spacing := baseStyle.Render("  ")
-			
+
 			// Combine all parts - the background should flow continuously
 			line := datePart + spacing + descPart + spacing + categoryPart + spacing + amountPart
-			
+
 			content.WriteString(line + "\n")
 			rowCount++
 		}
@@ -252,12 +257,12 @@ func (m model) renderAddBox() string {
 	formContent := strings.Join(rows, "\n\n")
 
 	helpText := helpStyle.Render("↑/↓: move • Tab: autocomplete • Enter: submit • Esc: cancel")
-	
+
 	// List available expense types
 	typeLabels := types.ExpenseTypeSuggestions()
 	typesList := "Available types: " + strings.Join(typeLabels, ", ")
 	typesText := helpStyle.Render(typesList)
-	
+
 	content := formContent + "\n\n" + helpText + "\n" + typesText
 
 	// Show validation/creation error below form if any
@@ -403,29 +408,29 @@ func (m model) renderTooSmallMessage() string {
 func formatAmountWithCommas(amount float64) string {
 	// Format to 2 decimal places
 	formatted := fmt.Sprintf("%.2f", amount)
-	
+
 	// Split into integer and decimal parts
 	parts := strings.Split(formatted, ".")
 	if len(parts) != 2 {
 		return formatted
 	}
-	
+
 	integerPart := parts[0]
 	decimalPart := parts[1]
-	
+
 	// Handle negative numbers
 	negative := false
 	if len(integerPart) > 0 && integerPart[0] == '-' {
 		negative = true
 		integerPart = integerPart[1:]
 	}
-	
+
 	// Add commas every 3 digits from right to left
 	var result strings.Builder
 	if negative {
 		result.WriteString("-")
 	}
-	
+
 	length := len(integerPart)
 	for i, digit := range integerPart {
 		if i > 0 && (length-i)%3 == 0 {
@@ -433,11 +438,11 @@ func formatAmountWithCommas(amount float64) string {
 		}
 		result.WriteRune(digit)
 	}
-	
+
 	// Add decimal part
 	result.WriteString(".")
 	result.WriteString(decimalPart)
-	
+
 	return result.String()
 }
 

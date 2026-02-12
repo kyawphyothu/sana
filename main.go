@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/kyawphyothu/sana/config"
 	"github.com/kyawphyothu/sana/database"
 	"github.com/kyawphyothu/sana/program"
@@ -38,7 +38,7 @@ func main() {
 	// }
 
 	m := program.InitialModel(db)
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m)
 	_, err = p.Run()
 	if err != nil {
 		fmt.Println("Error running program:", err)

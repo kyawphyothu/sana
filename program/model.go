@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/lipgloss/v2"
 	"github.com/kyawphyothu/sana/database"
 	"github.com/kyawphyothu/sana/types"
 )
@@ -81,10 +81,34 @@ type formValidationErrMsg struct {
 	Err error
 }
 
+// blinkMsg is sent periodically to trigger cursor blinking in text inputs.
+type blinkMsg struct{}
+
+// blinkCmd returns a command that sends a blinkMsg after the blink interval.
+func blinkCmd() tea.Cmd {
+	return tea.Tick(500*time.Millisecond, func(time.Time) tea.Msg {
+		return blinkMsg{}
+	})
+}
+
 func newAddFormInput(placeholder string, width int) textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
+	ti.SetWidth(width)
 	return ti
+}
+
+// setTextInputStyles sets the styles for a textinput using the v2 API
+func setTextInputStyles(ti *textinput.Model, theme Theme) {
+	styles := ti.Styles()
+	styles.Focused.Prompt = lipgloss.NewStyle().Foreground(theme.Primary)
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(theme.Foreground).Background(theme.Background)
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(theme.Muted).Background(theme.Background)
+	styles.Blurred.Prompt = lipgloss.NewStyle().Foreground(theme.Muted)
+	styles.Blurred.Text = lipgloss.NewStyle().Foreground(theme.Foreground).Background(theme.Background)
+	styles.Blurred.Placeholder = lipgloss.NewStyle().Foreground(theme.Muted).Background(theme.Background)
+	styles.Cursor.Color = theme.Primary
+	ti.SetStyles(styles)
 }
 
 func InitialModel(db *sql.DB) model {
@@ -96,32 +120,20 @@ func InitialModel(db *sql.DB) model {
 	// Form inputs (width set in View when we have m.width)
 	desc := newAddFormInput("", formWidth)
 	desc.Prompt = "Description: "
-	desc.PromptStyle = lipgloss.NewStyle().Foreground(theme.Primary)
-	desc.TextStyle = lipgloss.NewStyle().Foreground(theme.Foreground).Background(theme.Background)
-	desc.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Muted).Background(theme.Background)
-	desc.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Primary)
+	setTextInputStyles(&desc, theme)
 
 	amount := newAddFormInput("", formWidth)
 	amount.Prompt = fmt.Sprintf("Amount%s: ", strings.Repeat(".", promptWidth-8))
-	amount.PromptStyle = lipgloss.NewStyle().Foreground(theme.Primary)
-	amount.TextStyle = lipgloss.NewStyle().Foreground(theme.Foreground).Background(theme.Background)
-	amount.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Muted).Background(theme.Background)
-	amount.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Primary)
+	setTextInputStyles(&amount, theme)
 
 	date := newAddFormInput("YYYY-MM-DD or YYYY-MM-DD HH:MM:SS or today", formWidth)
 	date.Prompt = fmt.Sprintf("Date%s: ", strings.Repeat(".", promptWidth-6))
-	date.PromptStyle = lipgloss.NewStyle().Foreground(theme.Primary)
-	date.TextStyle = lipgloss.NewStyle().Foreground(theme.Foreground).Background(theme.Background)
-	date.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Muted).Background(theme.Background)
-	date.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Primary)
+	setTextInputStyles(&date, theme)
 	date.SetValue(time.Now().Format("2006-01-02"))
 
 	typ := newAddFormInput("", formWidth)
 	typ.Prompt = fmt.Sprintf("Type%s: ", strings.Repeat(".", promptWidth-6))
-	typ.PromptStyle = lipgloss.NewStyle().Foreground(theme.Primary)
-	typ.TextStyle = lipgloss.NewStyle().Foreground(theme.Foreground).Background(theme.Background)
-	typ.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Muted).Background(theme.Background)
-	typ.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Primary)
+	setTextInputStyles(&typ, theme)
 	typ.ShowSuggestions = true
 	typ.SetSuggestions(types.ExpenseTypeSuggestions())
 
@@ -146,7 +158,7 @@ func InitialModel(db *sql.DB) model {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(loadData(m.db), textinput.Blink)
+	return tea.Batch(loadData(m.db), blinkCmd())
 }
 
 // loadData returns a command that loads expenses, summary, and total from the database
@@ -383,29 +395,19 @@ func (m *model) updatePromptStyles() {
 	unfocusedStyle := lipgloss.NewStyle().Foreground(theme.Muted).Bold(false)
 
 	// Update each input's prompt style based on focus
-	if m.addFormFocused == addFormType {
-		m.addType.PromptStyle = focusedStyle
-	} else {
-		m.addType.PromptStyle = unfocusedStyle
-	}
+	updateInputPromptStyle(&m.addType, m.addFormFocused == addFormType, focusedStyle, unfocusedStyle)
+	updateInputPromptStyle(&m.addAmount, m.addFormFocused == addFormAmount, focusedStyle, unfocusedStyle)
+	updateInputPromptStyle(&m.addDescription, m.addFormFocused == addFormDescription, focusedStyle, unfocusedStyle)
+	updateInputPromptStyle(&m.addDate, m.addFormFocused == addFormDate, focusedStyle, unfocusedStyle)
+}
 
-	if m.addFormFocused == addFormAmount {
-		m.addAmount.PromptStyle = focusedStyle
-	} else {
-		m.addAmount.PromptStyle = unfocusedStyle
-	}
-
-	if m.addFormFocused == addFormDescription {
-		m.addDescription.PromptStyle = focusedStyle
-	} else {
-		m.addDescription.PromptStyle = unfocusedStyle
-	}
-
-	if m.addFormFocused == addFormDate {
-		m.addDate.PromptStyle = focusedStyle
-	} else {
-		m.addDate.PromptStyle = unfocusedStyle
-	}
+// updateInputPromptStyle updates the prompt style for a single input
+func updateInputPromptStyle(ti *textinput.Model, isFocused bool, focusedStyle, unfocusedStyle lipgloss.Style) {
+	styles := ti.Styles()
+	// Always update both states so the correct one is used based on focus
+	styles.Focused.Prompt = focusedStyle
+	styles.Blurred.Prompt = unfocusedStyle
+	ti.SetStyles(styles)
 }
 
 // adjustScrollOffset adjusts the scroll offset to the selected row (ensure row visible)
