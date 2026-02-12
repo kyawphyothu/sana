@@ -135,20 +135,72 @@ func (m model) renderExpensesBox() string {
 			// Convert UTC time to local timezone for display
 			localDate := expense.Date.Local()
 			formattedAmount := formatAmountWithCommas(expense.Amount)
-			line := fmt.Sprintf("%-*s  %-*s  %-*s  %*s",
-				dateWidth, localDate.Format("2006-01-02 15:04:05"),
-				descWidth, desc,
-				categoryWidth, expense.Type.String(),
-				amountWidth, formattedAmount,
-			)
-
-			// Highlight selected row if this box is selected
+			categoryText := expense.Type.String()
+			
+			// Check if this row is selected
 			actualRowIndex := m.expensesScrollOffset + i
-			if m.isSelected(expensesBox) && actualRowIndex == m.expensesSelectedRow {
-				content.WriteString(m.styles.Selected.Render(line) + "\n")
+			isRowSelected := m.isSelected(expensesBox) && actualRowIndex == m.expensesSelectedRow
+			
+			// Determine background and foreground colors based on selection
+			var bgColor lipgloss.Color
+			var fgColor lipgloss.Color
+			if isRowSelected {
+				bgColor = m.styles.Theme.Primary
+				fgColor = lipgloss.Color("#0F1117")
 			} else {
-				content.WriteString(m.styles.Line.Render(line) + "\n")
+				bgColor = m.styles.Theme.Background
+				fgColor = m.styles.Theme.Foreground
 			}
+			
+			// Create a base style for the row
+			baseStyle := lipgloss.NewStyle().
+				Foreground(fgColor).
+				Background(bgColor)
+			
+			// Add bold styling for selected rows
+			if isRowSelected {
+				baseStyle = baseStyle.Bold(true)
+			}
+			
+			// Style each column part with proper width and alignment
+			datePart := baseStyle.
+				Width(dateWidth).
+				Align(lipgloss.Left).
+				Render(localDate.Format("2006-01-02 15:04:05"))
+			
+			descPart := baseStyle.
+				Width(descWidth).
+				Align(lipgloss.Left).
+				Render(desc)
+			
+			// Category gets its own color but same background and bold if selected
+			categoryColor := CategoryColor(categoryText)
+			// Invert category color when row is selected
+			if isRowSelected {
+				categoryColor = InvertColor(categoryColor)
+			}
+			categoryStyle := lipgloss.NewStyle().
+				Foreground(categoryColor).
+				Background(bgColor).
+				Width(categoryWidth).
+				Align(lipgloss.Left)
+			if isRowSelected {
+				categoryStyle = categoryStyle.Bold(true)
+			}
+			categoryPart := categoryStyle.Render(categoryText)
+			
+			amountPart := baseStyle.
+				Width(amountWidth).
+				Align(lipgloss.Right).
+				Render(formattedAmount)
+			
+			// Spacing between columns (2 spaces) with background
+			spacing := baseStyle.Render("  ")
+			
+			// Combine all parts - the background should flow continuously
+			line := datePart + spacing + descPart + spacing + categoryPart + spacing + amountPart
+			
+			content.WriteString(line + "\n")
 			rowCount++
 		}
 	}

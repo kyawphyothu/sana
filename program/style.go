@@ -1,6 +1,7 @@
 package program
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -365,4 +366,56 @@ func padToWidth(s string, width int, bgColor lipgloss.Color) string {
 		Inline(true)
 
 	return lineStyle.Render(s)
+}
+
+// CategoryColor returns the color for a given expense type category
+func CategoryColor(category string) lipgloss.Color {
+	switch category {
+	case "Food":
+		return lipgloss.Color("#6BCB77") // soft green
+	case "Transport":
+		return lipgloss.Color("#4D96FF") // soft blue
+	case "Bills":
+		return lipgloss.Color("#FF6B6B") // soft red
+	case "Shopping":
+		return lipgloss.Color("#FFD93D") // warm yellow
+	case "Health":
+		return lipgloss.Color("#A66CFF") // violet
+	case "Other":
+		return lipgloss.Color("#9AA0B5") // gray-purple
+	default:
+		return lipgloss.Color("#9AA0B5") // default to gray-purple
+	}
+}
+
+// InvertColor inverts a hex color by converting RGB to inverted RGB
+func InvertColor(color lipgloss.Color) lipgloss.Color {
+	// Extract hex string (remove # if present)
+	hex := string(color)
+	if len(hex) == 0 {
+		return color
+	}
+	
+	// Handle lipgloss.Color which might include # prefix
+	if hex[0] == '#' {
+		hex = hex[1:]
+	}
+	
+	// Parse RGB values
+	if len(hex) != 6 {
+		return color // Invalid hex, return original
+	}
+	
+	// Parse R, G, B components
+	var r, g, b int
+	fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b)
+	
+	// Invert each component
+	r = 255 - r
+	g = 255 - g
+	b = 255 - b
+	
+	// Convert back to hex
+	invertedHex := fmt.Sprintf("#%02X%02X%02X", r, g, b)
+	return lipgloss.Color(invertedHex)
 }
