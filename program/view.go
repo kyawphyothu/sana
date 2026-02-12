@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/kyawphyothu/sana/types"
 )
 
 const (
@@ -30,13 +31,15 @@ func (m model) View() string {
 	// Build the three sections
 	titleBox := m.renderTitleBox()
 
-	// Conditionally render middle box based on selection
-	var middleBox string
 	if m.selected == addBox {
-		middleBox = m.renderAddBox()
-	} else {
-		middleBox = m.renderExpensesBox()
+		return lipgloss.JoinVertical(
+			lipgloss.Left,
+			titleBox,
+			m.renderAddBox(),
+		)
 	}
+
+	expensesBox := m.renderExpensesBox()
 
 	summaryBox := m.renderSummaryBox()
 
@@ -44,7 +47,7 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		titleBox,
-		middleBox,
+		expensesBox,
 		summaryBox,
 	)
 }
@@ -80,7 +83,7 @@ func (m model) renderExpensesBox() string {
 		// Column widths (flexible based on terminal width)
 		// Date: 12, Category: 12, Amount: 12, Description: remaining space
 		// Spacing between columns: 2 chars each (6 total for 3 gaps)
-		dateWidth := 12
+		dateWidth := 21
 		categoryWidth := 12
 		amountWidth := 12
 		spacing := 2
@@ -129,8 +132,10 @@ func (m model) renderExpensesBox() string {
 				desc = desc[:descWidth-3] + "..."
 			}
 
+			// Convert UTC time to local timezone for display
+			localDate := expense.Date.Local()
 			line := fmt.Sprintf("%-*s  %-*s  %-*s  %*.2f",
-				dateWidth, expense.Date.Format("2006-01-02"),
+				dateWidth, localDate.Format("2006-01-02 15:04:05"),
 				descWidth, desc,
 				categoryWidth, expense.Type.String(),
 				amountWidth, expense.Amount,
@@ -177,10 +182,35 @@ func (m model) renderExpensesBox() string {
 
 // renderAddBox creates the add expense form section (middle box)
 func (m model) renderAddBox() string {
-	boxHeight := m.calculateMiddleBoxHeight()
+	boxHeight := m.calculateAddBoxHeight()
 
-	var content strings.Builder
-	content.WriteString(m.styles.Muted.Render("Add expense form will go here..."))
+	// Update prompt styles based on focus before rendering
+	m.updatePromptStyles()
+
+	helpStyle := m.styles.Muted
+
+	// Form rows (each textinput has its own prompt)
+	rows := []string{
+		m.addType.View(),
+		m.addAmount.View(),
+		m.addDescription.View(),
+		m.addDate.View(),
+	}
+	formContent := strings.Join(rows, "\n\n")
+
+	helpText := helpStyle.Render("↑/↓: move • Tab: autocomplete • Enter: submit • Esc: cancel")
+	
+	// List available expense types
+	typeLabels := types.ExpenseTypeSuggestions()
+	typesList := "Available types: " + strings.Join(typeLabels, ", ")
+	typesText := helpStyle.Render(typesList)
+	
+	content := formContent + "\n\n" + helpText + "\n" + typesText
+
+	// Show validation/creation error below form if any
+	if m.err != nil && m.selected == addBox {
+		content += "\n\n" + m.styles.Line.Foreground(m.styles.Theme.Error).Render("Error: "+m.err.Error())
+	}
 
 	// Choose border color based on selection
 	isSelected := m.isSelected(addBox)
@@ -193,13 +223,13 @@ func (m model) renderAddBox() string {
 	title := m.formatMiddleBoxTitle(borderColor)
 
 	return m.styles.DrawBorderWithHeightAndTitleBold(
-		content.String(),
+		content,
 		m.width,
 		boxHeight,
 		RoundedBorderChars(),
 		borderColor,
 		title,
-		false, // We handle bold in the title itself
+		false,
 	)
 }
 
@@ -326,6 +356,16 @@ func (m model) calculateMiddleBoxHeight() int {
 	return remainingHeight / 2
 }
 
+func (m model) calculateAddBoxHeight() int {
+	const titleHeight = 5
+
+	// Remaining height after title box
+	remainingHeight := m.height - titleHeight
+
+	// Give add box half of remaining space (rounded down)
+	return remainingHeight
+}
+
 // formatSummaryTitle formats the title for the summary box with bold if selected
 func (m model) formatSummaryTitle(borderColor lipgloss.Color, isSelected bool) string {
 	// Shortcut key style - stands out
@@ -374,12 +414,15 @@ func (m model) formatMiddleBoxTitle(borderColor lipgloss.Color) string {
 	// Build title with appropriate bold sections based on m.selected
 	var expensesText, addText string
 
+	shortcutExpensesText := "[e]"
+
 	// Only bold and brighten if the corresponding box is actually selected
 	switch m.selected {
 	case expensesBox:
 		expensesText = selectedStyle.Render("Expenses")
 		addText = unselectedStyle.Render("Add Expense")
 	case addBox:
+		shortcutExpensesText = "[esc]"
 		expensesText = unselectedStyle.Render("Expenses")
 		addText = selectedStyle.Render("Add Expense")
 	default:
@@ -388,7 +431,7 @@ func (m model) formatMiddleBoxTitle(borderColor lipgloss.Color) string {
 		addText = unselectedStyle.Render("Add Expense")
 	}
 
-	title := shortcutStyle.Render("[e]") +
+	title := shortcutStyle.Render(shortcutExpensesText) +
 		expensesText +
 		separatorStyle.Render(" - ") +
 		shortcutStyle.Render("[a]") +

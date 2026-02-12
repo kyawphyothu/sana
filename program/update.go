@@ -19,6 +19,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.total = msg.Total
 		return m, nil
 
+	case expenseCreatedMsg:
+		if msg.Err != nil {
+			m.err = msg.Err
+			return m, nil
+		}
+		m.err = nil
+		m.addFormReset()
+		m.selected = expensesBox
+		return m, loadData(m.db)
+
+	case formValidationErrMsg:
+		m.err = msg.Err
+		return m, nil
+
 	case tea.KeyMsg:
 		return m.handleKeyPress(msg)
 	}
@@ -27,27 +41,86 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Box switching always available
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "ctrl+c":
+		return m, tea.Quit
+	}
+
+	// When add box is selected, handle form navigation and forward keys to focused input
+	if m.selected == addBox {
+		switch msg.String() {
+		case "tab":
+			// If we just completed a suggestion, move to next field
+			if m.typeFieldCompleted {
+				m.addFormFocusNext() // This will reset typeFieldCompleted
+				return m, nil
+			}
+			// If Type field is focused and has matched suggestions, accept the suggestion
+			if m.hasMatchedSuggestions() {
+				in := m.addFormInput()
+				var cmd tea.Cmd
+				*in, cmd = in.Update(msg)
+				// Check if the value is now a complete match (suggestion was accepted)
+				if m.isValueCompleteSuggestion() {
+					m.typeFieldCompleted = true
+				}
+				return m, cmd
+			}
+			// Otherwise, move to next field
+			m.addFormFocusNext()
+			return m, nil
+		case "down":
+			m.addFormFocusNext()
+			return m, nil
+		case "shift+tab", "up":
+			m.addFormFocusPrev()
+			return m, nil
+		case "enter":
+			if cmd := m.addFormSubmit(); cmd != nil {
+				return m, cmd
+			}
+			return m, nil
+		case "esc":
+			m.selected = expensesBox
+			return m, nil
+		}
+
+		// Forward to focused form input
+		in := m.addFormInput()
+		var cmd tea.Cmd
+		*in, cmd = in.Update(msg)
+		// Reset completion flag if user is typing (not Tab or Enter)
+		if msg.String() != "tab" && msg.String() != "enter" && m.addFormFocused == addFormType {
+			m.typeFieldCompleted = false
+		}
+		return m, cmd
+	}
+
+	// Expenses and summary box: row navigation
+	switch msg.String() {
+	case "q":
 		return m, tea.Quit
 	case "r": // Refresh data
 		m.resetRowSelection()
 		return m, loadData(m.db)
 	case "e": // Select expenses box
 		m.selected = expensesBox
+		return m, nil
 	case "a": // Select add box
 		m.selected = addBox
+		return m, nil
 	case "s": // Select summary box
 		m.selected = summaryBox
-	case "j": // Move selection down
-		// Calculate max visible rows based on box height
+		return m, nil
+	case "j", "down":
 		maxRows := m.calculateMaxVisibleRows()
 		m.moveRowDown(maxRows)
-	case "k": // Move selection up
+	case "k", "up":
 		m.moveRowUp()
-	case "g":
+	case "g", "home":
 		m.moveRowToTop()
-	case "G":
+	case "G", "end":
 		maxRows := m.calculateMaxVisibleRows()
 		m.moveRowToBottom(maxRows)
 	}

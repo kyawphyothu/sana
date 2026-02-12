@@ -2,8 +2,14 @@ package program
 
 import (
 	"database/sql"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/kyawphyothu/sana/database"
 	"github.com/kyawphyothu/sana/types"
 )
@@ -16,6 +22,17 @@ const (
 	addBox
 	summaryBox
 )
+
+// addFormFocus is the index of the focused field in the add-expense form.
+const (
+	addFormType addFormFocus = iota
+	addFormAmount
+	addFormDescription
+	addFormDate
+	addFormNumFields
+)
+
+type addFormFocus int
 
 type model struct {
 	db       *sql.DB
@@ -35,6 +52,14 @@ type model struct {
 	summarySelectedRow   int
 	summaryScrollOffset  int
 
+	// Add expense form
+	addDescription     textinput.Model
+	addAmount          textinput.Model
+	addDate            textinput.Model
+	addType            textinput.Model
+	addFormFocused     addFormFocus
+	typeFieldCompleted bool // Track if Type field suggestion was just completed
+
 	err error
 }
 
@@ -46,25 +71,82 @@ type dataLoadedMsg struct {
 	Err      error
 }
 
+// expenseCreatedMsg is sent when an expense is created (success or error).
+type expenseCreatedMsg struct {
+	Err error
+}
+
+// formValidationErrMsg is sent when add form validation fails (so the model can set err).
+type formValidationErrMsg struct {
+	Err error
+}
+
+func newAddFormInput(placeholder string, width int) textinput.Model {
+	ti := textinput.New()
+	ti.Placeholder = placeholder
+	return ti
+}
+
 func InitialModel(db *sql.DB) model {
 	theme := DefaultTheme()
 	styles := NewStyles(theme)
+	formWidth := 30
+	promptWidth := 13
+
+	// Form inputs (width set in View when we have m.width)
+	desc := newAddFormInput("", formWidth)
+	desc.Prompt = "Description: "
+	desc.PromptStyle = lipgloss.NewStyle().Foreground(theme.Primary)
+	desc.TextStyle = lipgloss.NewStyle().Foreground(theme.Foreground).Background(theme.Background)
+	desc.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Muted).Background(theme.Background)
+	desc.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Primary)
+
+	amount := newAddFormInput("", formWidth)
+	amount.Prompt = fmt.Sprintf("Amount%s: ", strings.Repeat(".", promptWidth-8))
+	amount.PromptStyle = lipgloss.NewStyle().Foreground(theme.Primary)
+	amount.TextStyle = lipgloss.NewStyle().Foreground(theme.Foreground).Background(theme.Background)
+	amount.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Muted).Background(theme.Background)
+	amount.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Primary)
+
+	date := newAddFormInput("YYYY-MM-DD or YYYY-MM-DD HH:MM:SS or today", formWidth)
+	date.Prompt = fmt.Sprintf("Date%s: ", strings.Repeat(".", promptWidth-6))
+	date.PromptStyle = lipgloss.NewStyle().Foreground(theme.Primary)
+	date.TextStyle = lipgloss.NewStyle().Foreground(theme.Foreground).Background(theme.Background)
+	date.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Muted).Background(theme.Background)
+	date.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Primary)
+	date.SetValue(time.Now().Format("2006-01-02"))
+
+	typ := newAddFormInput("", formWidth)
+	typ.Prompt = fmt.Sprintf("Type%s: ", strings.Repeat(".", promptWidth-6))
+	typ.PromptStyle = lipgloss.NewStyle().Foreground(theme.Primary)
+	typ.TextStyle = lipgloss.NewStyle().Foreground(theme.Foreground).Background(theme.Background)
+	typ.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Muted).Background(theme.Background)
+	typ.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Primary)
+	typ.ShowSuggestions = true
+	typ.SetSuggestions(types.ExpenseTypeSuggestions())
+
+	typ.Focus()
 
 	return model{
 		db:                   db,
 		expenses:             []types.Expense{},
 		summary:              []types.CategorySummary{},
 		styles:               styles,
-		selected:             expensesBox, // Start with expenses box selected
+		selected:             expensesBox,
 		expensesSelectedRow:  0,
 		expensesScrollOffset: 0,
 		summarySelectedRow:   0,
 		summaryScrollOffset:  0,
+		addDescription:       desc,
+		addAmount:            amount,
+		addDate:              date,
+		addType:              typ,
+		addFormFocused:       addFormType,
 	}
 }
 
 func (m model) Init() tea.Cmd {
-	return loadData(m.db)
+	return tea.Batch(loadData(m.db), textinput.Blink)
 }
 
 // loadData returns a command that loads expenses, summary, and total from the database
@@ -162,6 +244,167 @@ func (m *model) moveRowToBottom(maxVisibleRows int) {
 	case summaryBox:
 		m.summarySelectedRow = len(m.summary) - 1
 		m.adjustScrollOffset(maxVisibleRows)
+	}
+}
+
+// addFormInput returns the currently focused form input.
+func (m *model) addFormInput() *textinput.Model {
+	switch m.addFormFocused {
+	case addFormDescription:
+		return &m.addDescription
+	case addFormAmount:
+		return &m.addAmount
+	case addFormDate:
+		return &m.addDate
+	case addFormType:
+		return &m.addType
+	default:
+		return &m.addType
+	}
+}
+
+// addFormFocusNext moves focus to the next form field (wraps to first).
+func (m *model) addFormFocusNext() {
+	m.addFormInput().Blur()
+	m.typeFieldCompleted = false // Reset completion flag when moving focus
+	m.addFormFocused = (m.addFormFocused + 1) % addFormNumFields
+	m.addFormInput().Focus()
+}
+
+// addFormFocusPrev moves focus to the previous form field (wraps to last).
+func (m *model) addFormFocusPrev() {
+	m.addFormInput().Blur()
+	m.typeFieldCompleted = false // Reset completion flag when moving focus
+	m.addFormFocused--
+	if m.addFormFocused < 0 {
+		m.addFormFocused = addFormNumFields - 1
+	}
+	m.addFormInput().Focus()
+}
+
+// hasMatchedSuggestions checks if the Type field has matched suggestions
+func (m *model) hasMatchedSuggestions() bool {
+	// Only Type field has suggestions enabled
+	if m.addFormFocused != addFormType {
+		return false
+	}
+	// Check if there are matched suggestions
+	suggestions := m.addType.MatchedSuggestions()
+	return len(suggestions) > 0
+}
+
+// isValueCompleteSuggestion checks if the current Type field value is a complete match for a suggestion
+func (m *model) isValueCompleteSuggestion() bool {
+	if m.addFormFocused != addFormType {
+		return false
+	}
+	currentValue := strings.ToLower(strings.TrimSpace(m.addType.Value()))
+	if currentValue == "" {
+		return false
+	}
+	// Check against all available suggestions (not just matched ones)
+	// because after accepting, the value is the full suggestion text
+	suggestions := m.addType.AvailableSuggestions()
+	for _, suggestion := range suggestions {
+		if strings.ToLower(suggestion) == currentValue {
+			return true
+		}
+	}
+	return false
+}
+
+// addFormSubmit validates inputs, creates expense, and returns a command that sends expenseCreatedMsg or formValidationErrMsg.
+func (m *model) addFormSubmit() tea.Cmd {
+	desc := strings.TrimSpace(m.addDescription.Value())
+	amountStr := strings.TrimSpace(m.addAmount.Value())
+	dateStr := strings.TrimSpace(m.addDate.Value())
+	typeStr := strings.TrimSpace(m.addType.Value())
+
+	amount, err := strconv.ParseFloat(amountStr, 64)
+	if err != nil || amount <= 0 {
+		return func() tea.Msg { return formValidationErrMsg{Err: fmt.Errorf("amount must be a positive number")} }
+	}
+	var date time.Time
+	if dateStr == "" || strings.ToLower(dateStr) == "today" {
+		date = time.Now()
+	} else {
+		// Try parsing as "YYYY-MM-DD HH:MM:SS" first
+		date, err = time.ParseInLocation("2006-01-02 15:04:05", dateStr, time.Local)
+		if err != nil {
+			// If that fails, try parsing as "YYYY-MM-DD" and add current time
+			date, err = time.ParseInLocation("2006-01-02", dateStr, time.Local)
+			if err != nil {
+				return func() tea.Msg {
+					return formValidationErrMsg{Err: fmt.Errorf("date must be YYYY-MM-DD or YYYY-MM-DD HH:MM:SS or 'today'")}
+				}
+			}
+			// Add current time's hour, minute, and second in local timezone
+			now := time.Now()
+			date = time.Date(
+				date.Year(), date.Month(), date.Day(),
+				now.Hour(), now.Minute(), now.Second(), now.Nanosecond(),
+				time.Local,
+			)
+		}
+	}
+	// Convert to UTC before storing
+	date = date.UTC()
+	expType, ok := types.ParseExpenseType(typeStr)
+	if !ok {
+		expType = types.ExpenseTypeOther
+	}
+
+	db := m.db
+	return func() tea.Msg {
+		_, err := database.CreateExpense(db, date, amount, desc, expType)
+		return expenseCreatedMsg{Err: err}
+	}
+}
+
+// addFormReset clears form fields and refocuses description.
+func (m *model) addFormReset() {
+	m.addDescription.SetValue("")
+	m.addAmount.SetValue("")
+	m.addDate.SetValue(time.Now().Format("2006-01-02"))
+	m.addType.SetValue("")
+	m.typeFieldCompleted = false // Reset completion flag
+	m.addFormInput().Blur()
+	m.addFormFocused = addFormType
+	m.addType.Focus()
+}
+
+// updatePromptStyles updates prompt colors based on focus state
+func (m *model) updatePromptStyles() {
+	theme := m.styles.Theme
+
+	// Focused prompt uses Primary color (bright)
+	focusedStyle := lipgloss.NewStyle().Foreground(theme.Primary).Bold(true)
+	// Unfocused prompts use Muted color (subtle)
+	unfocusedStyle := lipgloss.NewStyle().Foreground(theme.Muted).Bold(false)
+
+	// Update each input's prompt style based on focus
+	if m.addFormFocused == addFormType {
+		m.addType.PromptStyle = focusedStyle
+	} else {
+		m.addType.PromptStyle = unfocusedStyle
+	}
+
+	if m.addFormFocused == addFormAmount {
+		m.addAmount.PromptStyle = focusedStyle
+	} else {
+		m.addAmount.PromptStyle = unfocusedStyle
+	}
+
+	if m.addFormFocused == addFormDescription {
+		m.addDescription.PromptStyle = focusedStyle
+	} else {
+		m.addDescription.PromptStyle = unfocusedStyle
+	}
+
+	if m.addFormFocused == addFormDate {
+		m.addDate.PromptStyle = focusedStyle
+	} else {
+		m.addDate.PromptStyle = unfocusedStyle
 	}
 }
 

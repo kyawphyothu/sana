@@ -1,6 +1,9 @@
 package types
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // ExpenseType is a category for an expense. Use these constants app-wide.
 type ExpenseType string
@@ -24,6 +27,28 @@ func AllExpenseTypes() []ExpenseType {
 		ExpenseTypeHealth,
 		ExpenseTypeOther,
 	}
+}
+
+// ExpenseTypeSuggestions returns display names for autocomplete (e.g. "Food", "Transport").
+func ExpenseTypeSuggestions() []string {
+	types := AllExpenseTypes()
+	s := make([]string, len(types))
+	for i, t := range types {
+		s[i] = t.String()
+	}
+	return s
+}
+
+// ParseExpenseType parses a string (display name or raw value like "food") into ExpenseType.
+// Returns (type, true) if valid, (other, false) otherwise.
+func ParseExpenseType(s string) (ExpenseType, bool) {
+	s = strings.TrimSpace(strings.ToLower(s))
+	for _, t := range AllExpenseTypes() {
+		if strings.ToLower(t.String()) == s || string(t) == s {
+			return t, true
+		}
+	}
+	return ExpenseTypeOther, false
 }
 
 // String returns a display-friendly label for the type.

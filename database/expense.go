@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/kyawphyothu/sana/types"
 )
@@ -69,4 +70,16 @@ func GetTotalExpenses(db *sql.DB) (float64, error) {
 	var total float64
 	err := db.QueryRow(`SELECT COALESCE(SUM(amount), 0) FROM expenses`).Scan(&total)
 	return total, err
+}
+
+// CreateExpense inserts a new expense and returns the new ID.
+func CreateExpense(db *sql.DB, date time.Time, amount float64, description string, expenseType types.ExpenseType) (int64, error) {
+	res, err := db.Exec(`
+		INSERT INTO expenses (date, amount, description, expense_type)
+		VALUES (?, ?, ?, ?)
+	`, date, amount, description, string(expenseType))
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
 }
