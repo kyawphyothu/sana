@@ -134,11 +134,12 @@ func (m model) renderExpensesBox() string {
 
 			// Convert UTC time to local timezone for display
 			localDate := expense.Date.Local()
-			line := fmt.Sprintf("%-*s  %-*s  %-*s  %*.2f",
+			formattedAmount := formatAmountWithCommas(expense.Amount)
+			line := fmt.Sprintf("%-*s  %-*s  %-*s  %*s",
 				dateWidth, localDate.Format("2006-01-02 15:04:05"),
 				descWidth, desc,
 				categoryWidth, expense.Type.String(),
-				amountWidth, expense.Amount,
+				amountWidth, formattedAmount,
 			)
 
 			// Highlight selected row if this box is selected
@@ -288,7 +289,8 @@ func (m model) renderSummaryBox() string {
 				break // Don't overflow
 			}
 
-			line := fmt.Sprintf("%-*s  %*d  %*.2f", categoryWidth, cat.Category, countWidth, cat.Count, amountWidth, cat.Total)
+			formattedAmount := formatAmountWithCommas(cat.Total)
+			line := fmt.Sprintf("%-*s  %*d  %*s", categoryWidth, cat.Category, countWidth, cat.Count, amountWidth, formattedAmount)
 
 			// Highlight selected row if this box is selected
 			actualRowIndex := m.summaryScrollOffset + i
@@ -304,7 +306,8 @@ func (m model) renderSummaryBox() string {
 		content.WriteString(m.styles.Muted.Render(separator) + "\n")
 
 		// Grand total
-		totalLine := fmt.Sprintf("%-*s  %*s  %*.2f", categoryWidth, "Total", countWidth, "", amountWidth, m.total)
+		formattedTotal := formatAmountWithCommas(m.total)
+		totalLine := fmt.Sprintf("%-*s  %*s  %*s", categoryWidth, "Total", countWidth, "", amountWidth, formattedTotal)
 		content.WriteString(m.styles.Header.Render(totalLine))
 	}
 
@@ -343,6 +346,48 @@ func (m model) renderTooSmallMessage() string {
 }
 
 // Helper functions
+
+// formatAmountWithCommas formats a float64 amount with comma separators for thousands
+func formatAmountWithCommas(amount float64) string {
+	// Format to 2 decimal places
+	formatted := fmt.Sprintf("%.2f", amount)
+	
+	// Split into integer and decimal parts
+	parts := strings.Split(formatted, ".")
+	if len(parts) != 2 {
+		return formatted
+	}
+	
+	integerPart := parts[0]
+	decimalPart := parts[1]
+	
+	// Handle negative numbers
+	negative := false
+	if len(integerPart) > 0 && integerPart[0] == '-' {
+		negative = true
+		integerPart = integerPart[1:]
+	}
+	
+	// Add commas every 3 digits from right to left
+	var result strings.Builder
+	if negative {
+		result.WriteString("-")
+	}
+	
+	length := len(integerPart)
+	for i, digit := range integerPart {
+		if i > 0 && (length-i)%3 == 0 {
+			result.WriteString(",")
+		}
+		result.WriteRune(digit)
+	}
+	
+	// Add decimal part
+	result.WriteString(".")
+	result.WriteString(decimalPart)
+	
+	return result.String()
+}
 
 // calculateMiddleBoxHeight calculates height for the stats box (middle box)
 func (m model) calculateMiddleBoxHeight() int {
