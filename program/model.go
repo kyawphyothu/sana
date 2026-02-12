@@ -52,6 +52,9 @@ type model struct {
 	summarySelectedRow   int
 	summaryScrollOffset  int
 
+	// Overlay state
+	showOverlay bool
+
 	// Add expense form
 	addDescription     textinput.Model
 	addAmount          textinput.Model
@@ -149,6 +152,7 @@ func InitialModel(db *sql.DB) model {
 		expensesScrollOffset: 0,
 		summarySelectedRow:   0,
 		summaryScrollOffset:  0,
+		showOverlay:          false,
 		addDescription:       desc,
 		addAmount:            amount,
 		addDate:              date,

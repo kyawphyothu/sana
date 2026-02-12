@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	lipglossv2 "charm.land/lipgloss/v2"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kyawphyothu/sana/types"
 )
@@ -21,12 +22,16 @@ const (
 // View renders the entire UI
 func (m model) View() tea.View {
 	if m.width == 0 || m.height == 0 {
-		return tea.NewView("Loading...")
+		res := tea.NewView("Loading...")
+		res.AltScreen = true
+		return res
 	}
 
 	// Check if terminal is too small
 	if m.width < minWidth || m.height < minHeight {
-		return tea.NewView(m.renderTooSmallMessage())
+		res := tea.NewView(m.renderTooSmallMessage())
+		res.AltScreen = true
+		return res
 	}
 
 	// Build the three sections
@@ -46,13 +51,60 @@ func (m model) View() tea.View {
 
 	summaryBox := m.renderSummaryBox()
 
-	// Stack vertically and return directly (no wrapper needed)
-	res := tea.NewView(lipgloss.JoinVertical(
+	// Stack vertically
+	mainContent := lipgloss.JoinVertical(
 		lipgloss.Left,
 		titleBox,
 		expensesBox,
 		summaryBox,
-	))
+	)
+
+	// If overlay is visible, layer it on top of main content using Canvas
+	if m.showOverlay {
+		overlay := m.renderOverlay()
+
+		// Create canvas with layers
+		mainLayer := lipglossv2.NewLayer(mainContent).
+			Width(m.width).
+			Height(m.height).
+			X(0).
+			Y(0).
+			Z(0) // Background layer
+
+		// Calculate overlay position (centered)
+		overlayHeight := len(strings.Split(overlay, "\n"))
+		overlayWidth := 0
+		for _, line := range strings.Split(overlay, "\n") {
+			width := lipgloss.Width(line)
+			if width > overlayWidth {
+				overlayWidth = width
+			}
+		}
+
+		overlayX := (m.width - overlayWidth) / 2
+		overlayY := (m.height - overlayHeight) / 2
+		if overlayX < 0 {
+			overlayX = 0
+		}
+		if overlayY < 0 {
+			overlayY = 0
+		}
+
+		overlayLayer := lipglossv2.NewLayer(overlay).
+			X(overlayX).
+			Y(overlayY).
+			Z(1) // Foreground layer (on top)
+
+		canvas := lipglossv2.NewCanvas(mainLayer, overlayLayer)
+		finalContent := canvas.Render()
+
+		res := tea.NewView(finalContent)
+		res.AltScreen = true
+		return res
+	}
+
+	// Stack vertically and return directly (no wrapper needed)
+	res := tea.NewView(mainContent)
 	res.AltScreen = true
 	return res
 }
@@ -490,6 +542,157 @@ func (m model) formatSummaryTitle(borderColor lipgloss.Color, isSelected bool) s
 	}
 
 	return shortcutStyle.Render("[s]") + textStyle.Render("Summary")
+}
+
+// renderOverlay renders the overlay showing expenses for the selected category
+func (m model) renderOverlay() string {
+	// Get selected category
+	if m.summarySelectedRow < 0 || m.summarySelectedRow >= len(m.summary) {
+		return m.styles.Muted.Render("No category selected")
+	}
+
+	selectedCategory := m.summary[m.summarySelectedRow].Category
+
+	// Filter expenses by category
+	filteredExpenses := m.filterExpensesByCategory(selectedCategory)
+
+	if len(filteredExpenses) == 0 {
+		content := fmt.Sprintf("No expenses found for category: %s", selectedCategory)
+		overlayWidth := 60
+		overlayHeight := 5
+		return m.styles.DrawBorderWithHeightAndTitle(
+			content,
+			overlayWidth,
+			overlayHeight,
+			RoundedBorderChars(),
+			m.styles.Theme.Primary,
+			selectedCategory,
+		)
+	}
+
+	// Calculate overlay dimensions (centered, reasonable size)
+	overlayWidth := m.width - 20
+	if overlayWidth < 60 {
+		overlayWidth = 60
+	}
+	if overlayWidth > 100 {
+		overlayWidth = 100
+	}
+
+	// Calculate available width for table
+	tableWidth := overlayWidth - 6 // width minus borders and padding
+
+	// Column widths: Date and Amount
+	dateWidth := 12
+	amountWidth := 12
+	spacing := 2
+	totalSpacing := spacing * 2 // 2 gaps between 3 columns
+	descriptionWidth := tableWidth - dateWidth - totalSpacing - amountWidth
+	if descriptionWidth < 5 {
+		descriptionWidth = 5
+	}
+
+	// Ensure we have enough space
+	if dateWidth+descriptionWidth+amountWidth+totalSpacing > tableWidth {
+		dateWidth = tableWidth - descriptionWidth - amountWidth - totalSpacing
+		if dateWidth < 10 {
+			dateWidth = 10
+		}
+	}
+
+	var content strings.Builder
+
+	// Table header
+	header := fmt.Sprintf("%-*s  %-*s  %*s", dateWidth, "Date", descriptionWidth, "Description", amountWidth, "Amount")
+	content.WriteString(m.styles.Header.Render(header) + "\n")
+
+	// Separator line
+	separator := strings.Repeat("─", tableWidth)
+	content.WriteString(m.styles.Muted.Render(separator) + "\n")
+
+	// Calculate how many rows can fit (leave some space for header and separator)
+	maxRows := 15 // Reasonable max for overlay
+	if len(filteredExpenses) < maxRows {
+		maxRows = len(filteredExpenses)
+	}
+
+	// Display expenses (already sorted by date desc)
+	for i := 0; i < maxRows; i++ {
+		expense := filteredExpenses[i]
+
+		// Convert UTC time to local timezone for display
+		localDate := expense.Date.Local()
+		formattedAmount := formatAmountWithCommas(expense.Amount)
+
+		datePart := m.styles.Line.
+			Width(dateWidth).
+			Align(lipgloss.Left).
+			Render(localDate.Format("2006-01-02"))
+
+		descriptionPart := m.styles.Line.
+			Width(descriptionWidth).
+			Align(lipgloss.Left).
+			Render(expense.Description)
+
+		amountPart := m.styles.Line.
+			Width(amountWidth).
+			Align(lipgloss.Right).
+			Render(formattedAmount)
+
+		// Spacing between columns
+		spacingStr := m.styles.Line.Render("  ")
+
+		line := datePart + spacingStr + descriptionPart + spacingStr + amountPart
+		content.WriteString(line + "\n")
+	}
+
+	// If there are more expenses, show a message
+	if len(filteredExpenses) > maxRows {
+		remaining := len(filteredExpenses) - maxRows
+		content.WriteString("\n")
+		content.WriteString(m.styles.Muted.Render(fmt.Sprintf("... and %d more", remaining)))
+	}
+
+	// Add help text
+	content.WriteString("\n")
+	content.WriteString(m.styles.Muted.Render("Press Space or Esc to close"))
+
+	overlayHeight := maxRows + 6 // header + separator + rows + before help + help + border * 2
+	if overlayHeight < 8 {
+		overlayHeight = 7
+	}
+
+	return m.styles.DrawBorderWithHeightAndTitle(
+		content.String(),
+		overlayWidth,
+		overlayHeight,
+		RoundedBorderChars(),
+		m.styles.Theme.Primary,
+		selectedCategory,
+	)
+}
+
+// filterExpensesByCategory filters expenses by category name (display name)
+// Expenses are already sorted by date desc from DB, so we maintain that order
+func (m model) filterExpensesByCategory(categoryName string) []types.Expense {
+	// Convert category display name back to ExpenseType
+	var targetType types.ExpenseType
+	for _, expType := range types.AllExpenseTypes() {
+		if expType.String() == categoryName {
+			targetType = expType
+			break
+		}
+	}
+
+	// Filter expenses (maintains date desc order from DB)
+	var filtered []types.Expense
+	for _, expense := range m.expenses {
+		if expense.Type == targetType {
+			filtered = append(filtered, expense)
+		}
+	}
+
+	return filtered
 }
 
 // formatMiddleBoxTitle formats the title for the middle box with bold for selected section

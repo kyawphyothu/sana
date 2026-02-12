@@ -43,6 +43,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Get the key from KeyMsg
+	key := msg.Key()
+	// Check for space key (check both Text and Code)
+	isSpace := key.Text == " " || key.Code == ' '
+
 	// Box switching always available
 	switch msg.String() {
 	case "ctrl+c":
@@ -97,6 +102,30 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.typeFieldCompleted = false
 		}
 		return m, cmd
+	}
+
+	// If overlay is open, only handle overlay-specific keys
+	if m.showOverlay {
+		if isSpace || msg.String() == "esc" {
+			m.showOverlay = false
+			return m, nil
+		}
+		if msg.String() == "ctrl+c" {
+			return m, tea.Quit
+		}
+		// Ignore other keys when overlay is open
+		return m, nil
+	}
+
+	// Handle space key for overlay toggle
+	if isSpace {
+		if m.selected == summaryBox && len(m.summary) > 0 {
+			// Ensure we have a valid selected row
+			if m.summarySelectedRow >= 0 && m.summarySelectedRow < len(m.summary) {
+				m.showOverlay = !m.showOverlay
+			}
+		}
+		return m, nil
 	}
 
 	// Expenses and summary box: row navigation
