@@ -117,8 +117,6 @@ func setTextInputStyles(ti *textinput.Model, theme Theme) {
 func InitialModel(db *sql.DB) model {
 	theme := DefaultTheme()
 	styles := NewStyles(theme)
-	formWidth := 30
-	promptWidth := 13
 
 	// Form inputs (width set in View when we have m.width)
 	desc := newAddFormInput("", formWidth)
@@ -126,16 +124,16 @@ func InitialModel(db *sql.DB) model {
 	setTextInputStyles(&desc, theme)
 
 	amount := newAddFormInput("", formWidth)
-	amount.Prompt = fmt.Sprintf("Amount%s: ", strings.Repeat(".", promptWidth-8))
+	amount.Prompt = fmt.Sprintf("Amount%s: ", strings.Repeat(".", promptWidth-promptOffsetAmount))
 	setTextInputStyles(&amount, theme)
 
 	date := newAddFormInput("YYYY-MM-DD or YYYY-MM-DD HH:MM:SS or today", formWidth)
-	date.Prompt = fmt.Sprintf("Date%s: ", strings.Repeat(".", promptWidth-6))
+	date.Prompt = fmt.Sprintf("Date%s: ", strings.Repeat(".", promptWidth-promptOffsetDate))
 	setTextInputStyles(&date, theme)
 	date.SetValue(time.Now().Format("2006-01-02"))
 
 	typ := newAddFormInput("", formWidth)
-	typ.Prompt = fmt.Sprintf("Type%s: ", strings.Repeat(".", promptWidth-6))
+	typ.Prompt = fmt.Sprintf("Type%s: ", strings.Repeat(".", promptWidth-promptOffsetType))
 	setTextInputStyles(&typ, theme)
 	typ.ShowSuggestions = true
 	typ.SetSuggestions(types.ExpenseTypeSuggestions())

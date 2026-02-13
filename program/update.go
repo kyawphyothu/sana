@@ -161,19 +161,18 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // calculateMaxVisibleRows returns the max number of visible rows in the currently selected box
 func (m model) calculateMaxVisibleRows() int {
-	const titleHeight = 7
-	boxHeight := (m.height - titleHeight) / 2
+	boxHeight := (m.height - titleHeightForRows) / boxHeightDivisor
 
 	switch m.selected {
 	case expensesBox:
-		// Expenses box: boxHeight - 2 (borders) - 2 (header + separator)
-		return boxHeight - 4
+		// Expenses box: boxHeight - borders - header - separator
+		return boxHeight - expensesBoxRowOffset
 	case addBox:
 		// Add box doesn't have rows to navigate
 		return 1
 	case summaryBox:
-		// Summary box: boxHeight - 2 (borders) - 2 (header + separator) - 2 (separator + total)
-		return boxHeight - 6
+		// Summary box: boxHeight - borders - header - separator - separator - total
+		return boxHeight - summaryBoxRowOffset
 	}
 	return 1
 }

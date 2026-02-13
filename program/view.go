@@ -14,9 +14,6 @@ const (
 	sanaFiglet = `░█▀▀░█▀█░█▀█░█▀█
 ░▀▀█░█▀█░█░█░█▀█
 ░▀▀▀░▀░▀░▀░▀░▀░▀`
-
-	minWidth  = 70
-	minHeight = 20
 )
 
 // View renders the entire UI
@@ -111,14 +108,12 @@ func (m model) View() tea.View {
 
 // renderTitleBox creates the top title section with Sana figlet
 func (m model) renderTitleBox() string {
-	const titleHeight = 5
-
 	content := m.styles.Title.Render(sanaFiglet)
 
 	return m.styles.DrawBorderWithHeightAndTitle(
 		content,
 		m.width,
-		titleHeight,
+		titleBoxHeight,
 		DoubleBorderChars(),
 		m.styles.Theme.Border,
 		"Sana",
@@ -135,20 +130,18 @@ func (m model) renderExpensesBox() string {
 		content.WriteString(m.styles.Muted.Render("No expenses yet"))
 	} else {
 		// Calculate available width for table
-		tableWidth := m.width - 6 // width minus borders and padding
+		tableWidth := m.width - tableBorderPadding
 
 		// Column widths (flexible based on terminal width)
-		// Date: 12, Category: 12, Amount: 12, Description: remaining space
-		// Spacing between columns: 2 chars each (6 total for 3 gaps)
-		dateWidth := 21
-		categoryWidth := 12
-		amountWidth := 12
-		spacing := 2
-		totalSpacing := spacing * 3 // 3 gaps between 4 columns
+		dateWidth := tableDateWidth
+		categoryWidth := tableCategoryWidth
+		amountWidth := tableAmountWidth
+		spacing := tableColumnSpacing
+		totalSpacing := spacing * tableColumnGapsExpenses
 
 		descWidth := tableWidth - dateWidth - categoryWidth - amountWidth - totalSpacing
-		if descWidth < 10 {
-			descWidth = 10 // minimum description width
+		if descWidth < tableMinDescWidth {
+			descWidth = tableMinDescWidth
 		}
 
 		// Table header
@@ -164,8 +157,7 @@ func (m model) renderExpensesBox() string {
 		content.WriteString(m.styles.Muted.Render(separator) + "\n")
 
 		// Calculate how many rows can fit
-		// boxHeight - 2 (borders) - 2 (header + separator) = available rows
-		maxRows := boxHeight - 4
+		maxRows := boxHeight - expensesBoxHeaderRows
 		if maxRows < 1 {
 			maxRows = 1
 		}
@@ -186,7 +178,7 @@ func (m model) renderExpensesBox() string {
 			// Truncate description if too long
 			desc := expense.Description
 			if len(desc) > descWidth {
-				desc = desc[:descWidth-3] + "..."
+				desc = desc[:descWidth-descTruncateSuffix] + "..."
 			}
 
 			// Convert UTC time to local timezone for display
@@ -346,9 +338,8 @@ func (m model) renderAddBox() string {
 // renderSummaryBox creates the summary section grouped by category (third box)
 func (m model) renderSummaryBox() string {
 	// Calculate height: use all remaining space after title and expenses box
-	const titleHeight = 5
 	expensesHeight := m.calculateMiddleBoxHeight()
-	boxHeight := m.height - titleHeight - expensesHeight
+	boxHeight := m.height - titleBoxHeight - expensesHeight
 
 	var content strings.Builder
 
@@ -356,18 +347,16 @@ func (m model) renderSummaryBox() string {
 		content.WriteString(m.styles.Muted.Render("No expenses to summarize"))
 	} else {
 		// Calculate available width for table
-		tableWidth := m.width - 6 // width minus borders and padding
+		tableWidth := m.width - tableBorderPadding
 
 		// Column widths (flexible based on terminal width)
-		// Amount: 15, Category: remaining space
-		// Spacing: 2 chars
-		amountWidth := 15
-		countWidth := 5
-		spacing := 2
-		totalSpacing := spacing * 2 // 2 gaps between 3 columns
+		amountWidth := tableAmountWidthSummary
+		countWidth := tableCountWidth
+		spacing := tableColumnSpacing
+		totalSpacing := spacing * tableColumnGapsSummary
 		categoryWidth := tableWidth - amountWidth - countWidth - totalSpacing
-		if categoryWidth < 10 {
-			categoryWidth = 10 // minimum category width
+		if categoryWidth < tableMinCategoryWidth {
+			categoryWidth = tableMinCategoryWidth
 		}
 
 		// Table header
@@ -379,8 +368,7 @@ func (m model) renderSummaryBox() string {
 		content.WriteString(m.styles.Muted.Render(separator) + "\n")
 
 		// Calculate how many rows can fit
-		// boxHeight - 2 (borders) - 2 (header + separator) - 2 (separator + total) = available rows
-		maxRows := boxHeight - 6
+		maxRows := boxHeight - summaryBoxHeaderRows
 		if maxRows < 1 {
 			maxRows = 1
 		}
@@ -500,23 +488,19 @@ func formatAmountWithCommas(amount float64) string {
 
 // calculateMiddleBoxHeight calculates height for the stats box (middle box)
 func (m model) calculateMiddleBoxHeight() int {
-	const titleHeight = 5
-
 	// Remaining height after title box
-	remainingHeight := m.height - titleHeight
+	remainingHeight := m.height - titleBoxHeight
 
 	// Give stats box half of remaining space (rounded down)
 	// The expenses box will get all remaining space to fill terminal completely
-	return remainingHeight / 2
+	return remainingHeight / boxHeightDivisor
 }
 
 func (m model) calculateAddBoxHeight() int {
-	const titleHeight = 5
-
 	// Remaining height after title box
-	remainingHeight := m.height - titleHeight
+	remainingHeight := m.height - titleBoxHeight
 
-	// Give add box half of remaining space (rounded down)
+	// Give add box all remaining space
 	return remainingHeight
 }
 
@@ -558,12 +542,10 @@ func (m model) renderOverlay() string {
 
 	if len(filteredExpenses) == 0 {
 		content := fmt.Sprintf("No expenses found for category: %s", selectedCategory)
-		overlayWidth := 60
-		overlayHeight := 5
 		return m.styles.DrawBorderWithHeightAndTitle(
 			content,
-			overlayWidth,
-			overlayHeight,
+			overlayMinWidth,
+			overlayMinHeight,
 			RoundedBorderChars(),
 			m.styles.Theme.Primary,
 			selectedCategory,
@@ -571,32 +553,32 @@ func (m model) renderOverlay() string {
 	}
 
 	// Calculate overlay dimensions (centered, reasonable size)
-	overlayWidth := m.width - 20
-	if overlayWidth < 60 {
-		overlayWidth = 60
+	overlayWidth := m.width - overlaySideMargin
+	if overlayWidth < overlayMinWidth {
+		overlayWidth = overlayMinWidth
 	}
-	if overlayWidth > 100 {
-		overlayWidth = 100
+	if overlayWidth > overlayMaxWidth {
+		overlayWidth = overlayMaxWidth
 	}
 
 	// Calculate available width for table
-	tableWidth := overlayWidth - 6 // width minus borders and padding
+	tableWidth := overlayWidth - tableBorderPadding
 
 	// Column widths: Date and Amount
-	dateWidth := 12
-	amountWidth := 12
-	spacing := 2
-	totalSpacing := spacing * 2 // 2 gaps between 3 columns
+	dateWidth := tableDateWidth
+	amountWidth := tableAmountWidth
+	spacing := tableColumnSpacing
+	totalSpacing := spacing * tableColumnGapsOverlay
 	descriptionWidth := tableWidth - dateWidth - totalSpacing - amountWidth
-	if descriptionWidth < 5 {
-		descriptionWidth = 5
+	if descriptionWidth < tableMinDescWidth {
+		descriptionWidth = tableMinDescWidth
 	}
 
 	// Ensure we have enough space
 	if dateWidth+descriptionWidth+amountWidth+totalSpacing > tableWidth {
 		dateWidth = tableWidth - descriptionWidth - amountWidth - totalSpacing
-		if dateWidth < 10 {
-			dateWidth = 10
+		if dateWidth < tableMinDescWidth {
+			dateWidth = tableMinDescWidth
 		}
 	}
 
@@ -611,7 +593,7 @@ func (m model) renderOverlay() string {
 	content.WriteString(m.styles.Muted.Render(separator) + "\n")
 
 	// Calculate how many rows can fit (leave some space for header and separator)
-	maxRows := 15 // Reasonable max for overlay
+	maxRows := overlayMaxRows
 	if len(filteredExpenses) < maxRows {
 		maxRows = len(filteredExpenses)
 	}
@@ -657,9 +639,9 @@ func (m model) renderOverlay() string {
 	content.WriteString("\n")
 	content.WriteString(m.styles.Muted.Render("Press Space or Esc to close"))
 
-	overlayHeight := maxRows + 6 // header + separator + rows + before help + help + border * 2
-	if overlayHeight < 8 {
-		overlayHeight = 7
+	overlayHeight := maxRows + overlayHeaderRows
+	if overlayHeight < overlayMinHeightFallback {
+		overlayHeight = overlayMinHeightFallback
 	}
 
 	return m.styles.DrawBorderWithHeightAndTitle(

@@ -104,7 +104,7 @@ func NewStyles(theme Theme) Styles {
 
 // Box creates a styled box with the given width and height
 func (s Styles) Box(width, height int) lipgloss.Style {
-	return s.Base.Width(width).Height(height).Padding(0, 2)
+	return s.Base.Width(width).Height(height).Padding(0, borderPadding)
 }
 
 // CenteredBox creates a centered box
@@ -178,7 +178,7 @@ func (s Styles) DrawBorderWithTitleBold(content string, width int, borderChars B
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
 
 	// Calculate inner width (excluding border characters and padding)
-	innerWidth := width - 4 // 2 for borders + 2 for padding
+	innerWidth := width - innerWidthPadding
 	if innerWidth < 1 {
 		innerWidth = 1
 	}
@@ -206,7 +206,7 @@ func (s Styles) DrawBorderWithTitleBold(content string, width int, borderChars B
 	}
 
 	// Bottom border
-	bottomBorder := borderChars.BottomLeft + strings.Repeat(borderChars.Horizontal, width-2) + borderChars.BottomRight
+	bottomBorder := borderChars.BottomLeft + strings.Repeat(borderChars.Horizontal, width-borderCornerCharsWidth) + borderChars.BottomRight
 	result.WriteString(borderStyle.Render(bottomBorder))
 
 	return result.String()
@@ -229,8 +229,8 @@ func (s Styles) DrawBorderWithHeightAndTitleBold(content string, width, height i
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
 
 	// Calculate inner dimensions
-	innerWidth := width - 4   // 2 for borders + 2 for padding
-	innerHeight := height - 2 // 2 for top and bottom borders
+	innerWidth := width - innerWidthPadding
+	innerHeight := height - innerHeightPadding
 	if innerWidth < 1 {
 		innerWidth = 1
 	}
@@ -268,7 +268,7 @@ func (s Styles) DrawBorderWithHeightAndTitleBold(content string, width, height i
 	}
 
 	// Bottom border
-	bottomBorder := borderChars.BottomLeft + strings.Repeat(borderChars.Horizontal, width-2) + borderChars.BottomRight
+	bottomBorder := borderChars.BottomLeft + strings.Repeat(borderChars.Horizontal, width-borderCornerCharsWidth) + borderChars.BottomRight
 	result.WriteString(borderStyle.Render(bottomBorder))
 
 	return result.String()
@@ -295,7 +295,7 @@ func (s Styles) buildTopBorder(width int, borderChars BorderChars, title string,
 	titleWidth := lipgloss.Width(titleWithSpacing)
 
 	// Calculate remaining horizontal line space
-	remainingWidth := width - 2 - titleWidth // -2 for corner chars
+	remainingWidth := width - borderCornerCharsWidth - titleWidth
 	if remainingWidth < 0 {
 		remainingWidth = 0
 	}
