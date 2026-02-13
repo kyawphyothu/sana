@@ -35,25 +35,26 @@ sana
 
 ### Add box
 
-- `tab` - Autocomplete suggestion
+- `tab` - Autocomplete suggestion or move to next field
 - `shift+tab` - Move to previous field
 - `down` - Move to next field
 - `up` - Move to previous field
 - `enter` - Submit form
 - `esc` - Cancel form
 
+### Summary box
+
+- `space` - Toggle overlay
+- `esc` - Close overlay
+
 ### Global keybindings
 
 - `a` - Select Add box
 - `s` - Select Summary box
 - `e` - Select Expenses box
-- `j` - Move selection down
-- `k` - Move selection up
-- `down` - Move selection down
-- `up` - Move selection up
-- `g` - Move selection to top
-- `G` - Move selection to bottom
-- `home` - Move selection to top
-- `end` - Move selection to bottom
+- `j` / `down` - Move selection down
+- `k` / `up` - Move selection up
+- `g`/ `home` - Move selection to top
+- `G`/ `end` - Move selection to bottom
 - `r` - Refresh data
 - `q` / `ctrl+c` - Quit
