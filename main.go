@@ -28,15 +28,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// if seed flag is set, seed the database
-	// if os.Args[1] == "seed" {
-	// 	if err := database.Seed(db); err != nil {
-	// 		fmt.Println("Error seeding database:", err)
-	// 		os.Exit(1)
-	// 	}
-	// 	os.Exit(0)
-	// }
-
 	m := program.InitialModel(db)
 	p := tea.NewProgram(m)
 	_, err = p.Run()

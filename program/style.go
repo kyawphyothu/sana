@@ -21,32 +21,6 @@ type Theme struct {
 }
 
 // DefaultTheme returns Sana's purple theme
-// func DefaultTheme() Theme {
-// 	return Theme{
-// 		Primary:    lipgloss.Color("#9C9ECF"), // Sana's purple
-// 		Background: lipgloss.Color("#20212E"), // Cozy dark
-// 		Foreground: lipgloss.Color("#E6E7F2"), // Light text
-// 		Muted:      lipgloss.Color("#A1A1B8"), // Secondary text
-// 		Success:    lipgloss.Color("#A8D5BA"), // Green
-// 		Error:      lipgloss.Color("#E8A5A5"), // Red
-// 		Selected:   lipgloss.Color("#7DD3FC"), // Bright cyan for selected items
-// 	}
-// }
-
-// Background        → #0F1117
-// Panel BG          → #161925
-// Text              → #E6E8F0
-// Muted Text        → #7C809F
-
-// Primary Accent    → #9C9ECF
-// Focused Border    → #9C9ECF
-// Selected Item     → FG #9C9ECF / BG #252A40
-
-// Error             → #E07A7A
-// Success           → #7BD88F
-// Warning           → #F2C97D
-//
-// DefaultTheme returns Sana's purple theme
 func DefaultTheme() Theme {
 	return Theme{
 		Primary:    lipgloss.Color("#9C9ECF"), // Sana's purple - kept as requested
