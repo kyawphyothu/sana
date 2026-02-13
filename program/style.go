@@ -2,21 +2,22 @@ package program
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	lipgloss "charm.land/lipgloss/v2"
 )
 
 // Theme colors - centralized color palette
 type Theme struct {
-	Primary    lipgloss.Color
-	Background lipgloss.Color
-	Foreground lipgloss.Color
-	Muted      lipgloss.Color
-	Success    lipgloss.Color
-	Error      lipgloss.Color
-	Selected   lipgloss.Color
-	Border     lipgloss.Color
+	Primary    color.Color
+	Background color.Color
+	Foreground color.Color
+	Muted      color.Color
+	Success    color.Color
+	Error      color.Color
+	Selected   color.Color
+	Border     color.Color
 }
 
 // DefaultTheme returns Sana's purple theme
@@ -187,17 +188,17 @@ func DoubleBorderChars() BorderChars {
 }
 
 // DrawBorder manually draws a border around content
-func (s Styles) DrawBorder(content string, width int, borderChars BorderChars, borderColor lipgloss.Color) string {
+func (s Styles) DrawBorder(content string, width int, borderChars BorderChars, borderColor color.Color) string {
 	return s.DrawBorderWithTitle(content, width, borderChars, borderColor, "")
 }
 
 // DrawBorderWithTitle manually draws a border around content with optional title in top border
-func (s Styles) DrawBorderWithTitle(content string, width int, borderChars BorderChars, borderColor lipgloss.Color, title string) string {
+func (s Styles) DrawBorderWithTitle(content string, width int, borderChars BorderChars, borderColor color.Color, title string) string {
 	return s.DrawBorderWithTitleBold(content, width, borderChars, borderColor, title, false)
 }
 
 // DrawBorderWithTitleBold manually draws a border with optional title and bold option
-func (s Styles) DrawBorderWithTitleBold(content string, width int, borderChars BorderChars, borderColor lipgloss.Color, title string, bold bool) string {
+func (s Styles) DrawBorderWithTitleBold(content string, width int, borderChars BorderChars, borderColor color.Color, title string, bold bool) string {
 	lines := splitLines(content)
 
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
@@ -238,17 +239,17 @@ func (s Styles) DrawBorderWithTitleBold(content string, width int, borderChars B
 }
 
 // DrawBorderWithHeight draws a border with specific height, padding content vertically
-func (s Styles) DrawBorderWithHeight(content string, width, height int, borderChars BorderChars, borderColor lipgloss.Color) string {
+func (s Styles) DrawBorderWithHeight(content string, width, height int, borderChars BorderChars, borderColor color.Color) string {
 	return s.DrawBorderWithHeightAndTitle(content, width, height, borderChars, borderColor, "")
 }
 
 // DrawBorderWithHeightAndTitle draws a border with specific height and optional title in top border
-func (s Styles) DrawBorderWithHeightAndTitle(content string, width, height int, borderChars BorderChars, borderColor lipgloss.Color, title string) string {
+func (s Styles) DrawBorderWithHeightAndTitle(content string, width, height int, borderChars BorderChars, borderColor color.Color, title string) string {
 	return s.DrawBorderWithHeightAndTitleBold(content, width, height, borderChars, borderColor, title, false)
 }
 
 // DrawBorderWithHeightAndTitleBold draws a border with specific height, optional title, and bold option
-func (s Styles) DrawBorderWithHeightAndTitleBold(content string, width, height int, borderChars BorderChars, borderColor lipgloss.Color, title string, bold bool) string {
+func (s Styles) DrawBorderWithHeightAndTitleBold(content string, width, height int, borderChars BorderChars, borderColor color.Color, title string, bold bool) string {
 	lines := splitLines(content)
 
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
@@ -349,7 +350,7 @@ func splitLines(content string) []string {
 }
 
 // padToWidth pads a string (that may contain ANSI codes) to the specified width
-func padToWidth(s string, width int, bgColor lipgloss.Color) string {
+func padToWidth(s string, width int, bgColor color.Color) string {
 	// Use lipgloss to measure the actual rendered width
 	currentWidth := lipgloss.Width(s)
 
@@ -369,7 +370,7 @@ func padToWidth(s string, width int, bgColor lipgloss.Color) string {
 }
 
 // CategoryColor returns the color for a given expense type category
-func CategoryColor(category string) lipgloss.Color {
+func CategoryColor(category string) color.Color {
 	switch category {
 	case "Food":
 		return lipgloss.Color("#6BCB77") // soft green
@@ -388,34 +389,27 @@ func CategoryColor(category string) lipgloss.Color {
 	}
 }
 
+// colorToHex converts color.Color to hex string for parsing
+func colorToHex(c color.Color) string {
+	r, g, b, _ := c.RGBA()
+	return fmt.Sprintf("#%02X%02X%02X", r>>8, g>>8, b>>8)
+}
+
 // InvertColor inverts a hex color by converting RGB to inverted RGB
-func InvertColor(color lipgloss.Color) lipgloss.Color {
-	// Extract hex string (remove # if present)
-	hex := string(color)
-	if len(hex) == 0 {
-		return color
+func InvertColor(c color.Color) color.Color {
+	hex := colorToHex(c)
+	if len(hex) < 7 {
+		return c
 	}
-	
-	// Handle lipgloss.Color which might include # prefix
-	if hex[0] == '#' {
-		hex = hex[1:]
-	}
-	
-	// Parse RGB values
-	if len(hex) != 6 {
-		return color // Invalid hex, return original
-	}
-	
-	// Parse R, G, B components
+	hex = hex[1:] // strip #
+
 	var r, g, b int
-	fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b)
-	
-	// Invert each component
+	if _, err := fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b); err != nil || len(hex) != 6 {
+		return c
+	}
+
 	r = 255 - r
 	g = 255 - g
 	b = 255 - b
-	
-	// Convert back to hex
-	invertedHex := fmt.Sprintf("#%02X%02X%02X", r, g, b)
-	return lipgloss.Color(invertedHex)
+	return lipgloss.Color(fmt.Sprintf("#%02X%02X%02X", r, g, b))
 }

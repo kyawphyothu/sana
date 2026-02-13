@@ -2,11 +2,11 @@ package program
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	lipglossv2 "charm.land/lipgloss/v2"
-	"github.com/charmbracelet/lipgloss"
+	lipgloss "charm.land/lipgloss/v2"
 	"github.com/kyawphyothu/sana/types"
 )
 
@@ -64,7 +64,7 @@ func (m model) View() tea.View {
 		overlay := m.renderOverlay()
 
 		// Create canvas with layers
-		mainLayer := lipglossv2.NewLayer(mainContent).
+		mainLayer := lipgloss.NewLayer(mainContent).
 			Width(m.width).
 			Height(m.height).
 			X(0).
@@ -90,12 +90,12 @@ func (m model) View() tea.View {
 			overlayY = 0
 		}
 
-		overlayLayer := lipglossv2.NewLayer(overlay).
+		overlayLayer := lipgloss.NewLayer(overlay).
 			X(overlayX).
 			Y(overlayY).
 			Z(1) // Foreground layer (on top)
 
-		canvas := lipglossv2.NewCanvas(mainLayer, overlayLayer)
+		canvas := lipgloss.NewCanvas(mainLayer, overlayLayer)
 		finalContent := canvas.Render()
 
 		res := tea.NewView(finalContent)
@@ -199,8 +199,8 @@ func (m model) renderExpensesBox() string {
 			isRowSelected := m.isSelected(expensesBox) && actualRowIndex == m.expensesSelectedRow
 
 			// Determine background and foreground colors based on selection
-			var bgColor lipgloss.Color
-			var fgColor lipgloss.Color
+			var bgColor color.Color
+			var fgColor color.Color
 			if isRowSelected {
 				bgColor = m.styles.Theme.Primary
 				fgColor = lipgloss.Color("#0F1117")
@@ -450,7 +450,7 @@ func (m model) renderTooSmallMessage() string {
 	return m.styles.Parent.
 		Width(m.width).
 		Height(m.height).
-		Align(lipgloss.Center, lipgloss.Center).
+		Align(lipgloss.Center).
 		Render(m.styles.Line.Foreground(m.styles.Theme.Error).Render(message))
 }
 
@@ -521,7 +521,7 @@ func (m model) calculateAddBoxHeight() int {
 }
 
 // formatSummaryTitle formats the title for the summary box with bold if selected
-func (m model) formatSummaryTitle(borderColor lipgloss.Color, isSelected bool) string {
+func (m model) formatSummaryTitle(borderColor color.Color, isSelected bool) string {
 	// Shortcut key style - stands out
 	shortcutStyle := lipgloss.NewStyle().
 		Foreground(m.styles.Theme.Success).
@@ -696,7 +696,7 @@ func (m model) filterExpensesByCategory(categoryName string) []types.Expense {
 }
 
 // formatMiddleBoxTitle formats the title for the middle box with bold for selected section
-func (m model) formatMiddleBoxTitle(borderColor lipgloss.Color) string {
+func (m model) formatMiddleBoxTitle(borderColor color.Color) string {
 	// Create styles for selected (bright + bold for visibility) and unselected (muted for readability)
 	selectedStyle := lipgloss.NewStyle().
 		Foreground(m.styles.Theme.Selected).
