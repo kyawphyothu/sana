@@ -16,6 +16,28 @@ const (
 ░▀▀▀░▀░▀░▀░▀░▀░▀`
 )
 
+// expenseColumnWidths holds column widths for the expenses table
+type expenseColumnWidths struct {
+	Date     int
+	Desc     int
+	Category int
+	Amount   int
+}
+
+// summaryColumnWidths holds column widths for the summary table
+type summaryColumnWidths struct {
+	Category int
+	Count    int
+	Amount   int
+}
+
+// overlayColumnWidths holds column widths for the category overlay table
+type overlayColumnWidths struct {
+	Date        int
+	Description int
+	Amount      int
+}
+
 // View renders the entire UI
 func (m model) View() tea.View {
 	if m.width == 0 || m.height == 0 {
@@ -129,127 +151,28 @@ func (m model) renderExpensesBox() string {
 	if len(m.expenses) == 0 {
 		content.WriteString(m.styles.Muted.Render("No expenses yet"))
 	} else {
-		// Calculate available width for table
 		tableWidth := m.width - tableBorderPadding
+		content.WriteString(m.buildExpensesTableHeader(tableWidth))
 
-		// Column widths (flexible based on terminal width)
-		dateWidth := tableDateWidth
-		categoryWidth := tableCategoryWidth
-		amountWidth := tableAmountWidth
-		spacing := tableColumnSpacing
-		totalSpacing := spacing * tableColumnGapsExpenses
-
-		descWidth := tableWidth - dateWidth - categoryWidth - amountWidth - totalSpacing
-		if descWidth < tableMinDescWidth {
-			descWidth = tableMinDescWidth
-		}
-
-		// Table header
-		header := fmt.Sprintf("%-*s  %-*s  %-*s  %*s",
-			dateWidth, "Date",
-			descWidth, "Description",
-			categoryWidth, "Category",
-			amountWidth, "Amount")
-		content.WriteString(m.styles.Header.Render(header) + "\n")
-
-		// Separator line
-		separator := strings.Repeat("─", tableWidth)
-		content.WriteString(m.styles.Muted.Render(separator) + "\n")
-
-		// Calculate how many rows can fit
 		maxRows := boxHeight - expensesBoxHeaderRows
 		if maxRows < 1 {
 			maxRows = 1
 		}
 
-		// Display expenses (already sorted by date desc from DB)
-		// Apply scroll offset
 		visibleExpenses := m.expenses
 		if m.expensesScrollOffset < len(visibleExpenses) {
 			visibleExpenses = visibleExpenses[m.expensesScrollOffset:]
 		}
 
+		widths := m.calculateExpenseColumnWidths(tableWidth)
 		rowCount := 0
 		for i, expense := range visibleExpenses {
 			if rowCount >= maxRows {
-				break // Don't overflow
+				break
 			}
-
-			// Truncate description if too long
-			desc := expense.Description
-			if len(desc) > descWidth {
-				desc = desc[:descWidth-descTruncateSuffix] + "..."
-			}
-
-			// Convert UTC time to local timezone for display
-			localDate := expense.Date.Local()
-			formattedAmount := formatAmountWithCommas(expense.Amount)
-			categoryText := expense.Type.String()
-
-			// Check if this row is selected
 			actualRowIndex := m.expensesScrollOffset + i
 			isRowSelected := m.isSelected(expensesBox) && actualRowIndex == m.expensesSelectedRow
-
-			// Determine background and foreground colors based on selection
-			var bgColor color.Color
-			var fgColor color.Color
-			if isRowSelected {
-				bgColor = m.styles.Theme.Primary
-				fgColor = lipgloss.Color("#0F1117")
-			} else {
-				bgColor = m.styles.Theme.Background
-				fgColor = m.styles.Theme.Foreground
-			}
-
-			// Create a base style for the row
-			baseStyle := lipgloss.NewStyle().
-				Foreground(fgColor).
-				Background(bgColor)
-
-			// Add bold styling for selected rows
-			if isRowSelected {
-				baseStyle = baseStyle.Bold(true)
-			}
-
-			// Style each column part with proper width and alignment
-			datePart := baseStyle.
-				Width(dateWidth).
-				Align(lipgloss.Left).
-				Render(localDate.Format("2006-01-02 15:04:05"))
-
-			descPart := baseStyle.
-				Width(descWidth).
-				Align(lipgloss.Left).
-				Render(desc)
-
-			// Category gets its own color but same background and bold if selected
-			categoryColor := CategoryColor(categoryText)
-			// Invert category color when row is selected
-			if isRowSelected {
-				categoryColor = InvertColor(categoryColor)
-			}
-			categoryStyle := lipgloss.NewStyle().
-				Foreground(categoryColor).
-				Background(bgColor).
-				Width(categoryWidth).
-				Align(lipgloss.Left)
-			if isRowSelected {
-				categoryStyle = categoryStyle.Bold(true)
-			}
-			categoryPart := categoryStyle.Render(categoryText)
-
-			amountPart := baseStyle.
-				Width(amountWidth).
-				Align(lipgloss.Right).
-				Render(formattedAmount)
-
-			// Spacing between columns (2 spaces) with background
-			spacing := baseStyle.Render("  ")
-
-			// Combine all parts - the background should flow continuously
-			line := datePart + spacing + descPart + spacing + categoryPart + spacing + amountPart
-
-			content.WriteString(line + "\n")
+			content.WriteString(m.renderExpenseRow(expense, widths, isRowSelected) + "\n")
 			rowCount++
 		}
 	}
@@ -280,6 +203,113 @@ func (m model) renderExpensesBox() string {
 		title,
 		false, // We handle bold in the title itself
 	)
+}
+
+// buildExpensesTableHeader returns the table header line and separator for the expenses box
+func (m model) buildExpensesTableHeader(tableWidth int) string {
+	widths := m.calculateExpenseColumnWidths(tableWidth)
+	header := fmt.Sprintf("%-*s  %-*s  %-*s  %*s",
+		widths.Date, "Date",
+		widths.Desc, "Description",
+		widths.Category, "Category",
+		widths.Amount, "Amount")
+	separator := strings.Repeat("─", tableWidth)
+	return m.styles.Header.Render(header) + "\n" + m.styles.Muted.Render(separator) + "\n"
+}
+
+// calculateExpenseColumnWidths computes column widths for the expenses table from available table width
+func (m model) calculateExpenseColumnWidths(tableWidth int) expenseColumnWidths {
+	dateWidth := tableDateWidth
+	categoryWidth := tableCategoryWidth
+	amountWidth := tableAmountWidth
+	spacing := tableColumnSpacing
+	totalSpacing := spacing * tableColumnGapsExpenses
+	descWidth := tableWidth - dateWidth - categoryWidth - amountWidth - totalSpacing
+	if descWidth < tableMinDescWidth {
+		descWidth = tableMinDescWidth
+	}
+	return expenseColumnWidths{
+		Date:     dateWidth,
+		Desc:     descWidth,
+		Category: categoryWidth,
+		Amount:   amountWidth,
+	}
+}
+
+// renderExpenseRow renders a single expense row with optional selection highlight
+func (m model) renderExpenseRow(expense types.Expense, widths expenseColumnWidths, isSelected bool) string {
+	desc := expense.Description
+	if len(desc) > widths.Desc {
+		desc = desc[:widths.Desc-descTruncateSuffix] + "..."
+	}
+	localDate := expense.Date.Local()
+	formattedAmount := formatAmountWithCommas(expense.Amount)
+	categoryText := expense.Type.String()
+
+	var bgColor, fgColor color.Color
+	if isSelected {
+		bgColor = m.styles.Theme.Primary
+		fgColor = lipgloss.Color("#0F1117")
+	} else {
+		bgColor = m.styles.Theme.Background
+		fgColor = m.styles.Theme.Foreground
+	}
+	baseStyle := lipgloss.NewStyle().Foreground(fgColor).Background(bgColor)
+	if isSelected {
+		baseStyle = baseStyle.Bold(true)
+	}
+
+	datePart := baseStyle.Width(widths.Date).Align(lipgloss.Left).Render(localDate.Format("2006-01-02 15:04:05"))
+	descPart := baseStyle.Width(widths.Desc).Align(lipgloss.Left).Render(desc)
+	categoryColor := CategoryColor(categoryText)
+	if isSelected {
+		categoryColor = InvertColor(categoryColor)
+	}
+	categoryStyle := lipgloss.NewStyle().Foreground(categoryColor).Background(bgColor).Width(widths.Category).Align(lipgloss.Left)
+	if isSelected {
+		categoryStyle = categoryStyle.Bold(true)
+	}
+	categoryPart := categoryStyle.Render(categoryText)
+	amountPart := baseStyle.Width(widths.Amount).Align(lipgloss.Right).Render(formattedAmount)
+	spacing := baseStyle.Render("  ")
+	return datePart + spacing + descPart + spacing + categoryPart + spacing + amountPart
+}
+
+// buildSummaryTableHeader returns the table header and separator for the summary box
+func (m model) buildSummaryTableHeader(tableWidth int) string {
+	widths := m.calculateSummaryColumnWidths(tableWidth)
+	header := fmt.Sprintf("%-*s  %*s  %*s", widths.Category, "Category", widths.Count, "Count", widths.Amount, "Amount")
+	separator := strings.Repeat("─", tableWidth)
+	return m.styles.Header.Render(header) + "\n" + m.styles.Muted.Render(separator) + "\n"
+}
+
+// calculateSummaryColumnWidths computes column widths for the summary table
+func (m model) calculateSummaryColumnWidths(tableWidth int) summaryColumnWidths {
+	amountWidth := tableAmountWidthSummary
+	countWidth := tableCountWidth
+	spacing := tableColumnSpacing
+	totalSpacing := spacing * tableColumnGapsSummary
+	categoryWidth := tableWidth - amountWidth - countWidth - totalSpacing
+	if categoryWidth < tableMinCategoryWidth {
+		categoryWidth = tableMinCategoryWidth
+	}
+	return summaryColumnWidths{Category: categoryWidth, Count: countWidth, Amount: amountWidth}
+}
+
+// renderSummaryRow renders a single summary row (category, count, amount)
+func (m model) renderSummaryRow(cat types.CategorySummary, widths summaryColumnWidths, isSelected bool) string {
+	formattedAmount := formatAmountWithCommas(cat.Total)
+	line := fmt.Sprintf("%-*s  %*d  %*s", widths.Category, cat.Category, widths.Count, cat.Count, widths.Amount, formattedAmount)
+	if isSelected {
+		return m.styles.Selected.Render(line)
+	}
+	return m.styles.Line.Render(line)
+}
+
+// renderSummaryTotalLine renders the "Total" row at the bottom of the summary table
+func (m model) renderSummaryTotalLine(widths summaryColumnWidths, total float64) string {
+	formattedTotal := formatAmountWithCommas(total)
+	return fmt.Sprintf("%-*s  %*s  %*s", widths.Category, "Total", widths.Count, "", widths.Amount, formattedTotal)
 }
 
 // renderAddBox creates the add expense form section (middle box)
@@ -337,7 +367,6 @@ func (m model) renderAddBox() string {
 
 // renderSummaryBox creates the summary section grouped by category (third box)
 func (m model) renderSummaryBox() string {
-	// Calculate height: use all remaining space after title and expenses box
 	expensesHeight := m.calculateMiddleBoxHeight()
 	boxHeight := m.height - titleBoxHeight - expensesHeight
 
@@ -346,76 +375,41 @@ func (m model) renderSummaryBox() string {
 	if len(m.expenses) == 0 {
 		content.WriteString(m.styles.Muted.Render("No expenses to summarize"))
 	} else {
-		// Calculate available width for table
 		tableWidth := m.width - tableBorderPadding
+		content.WriteString(m.buildSummaryTableHeader(tableWidth))
 
-		// Column widths (flexible based on terminal width)
-		amountWidth := tableAmountWidthSummary
-		countWidth := tableCountWidth
-		spacing := tableColumnSpacing
-		totalSpacing := spacing * tableColumnGapsSummary
-		categoryWidth := tableWidth - amountWidth - countWidth - totalSpacing
-		if categoryWidth < tableMinCategoryWidth {
-			categoryWidth = tableMinCategoryWidth
-		}
-
-		// Table header
-		header := fmt.Sprintf("%-*s  %*s  %*s", categoryWidth, "Category", countWidth, "Count", amountWidth, "Amount")
-		content.WriteString(m.styles.Header.Render(header) + "\n")
-
-		// Separator line
-		separator := strings.Repeat("─", tableWidth)
-		content.WriteString(m.styles.Muted.Render(separator) + "\n")
-
-		// Calculate how many rows can fit
 		maxRows := boxHeight - summaryBoxHeaderRows
 		if maxRows < 1 {
 			maxRows = 1
 		}
 
-		// Apply scroll offset (using database summary)
 		visibleSummary := m.summary
 		if m.summaryScrollOffset < len(visibleSummary) {
 			visibleSummary = visibleSummary[m.summaryScrollOffset:]
 		}
 
-		// Display category totals
+		widths := m.calculateSummaryColumnWidths(tableWidth)
 		rowCount := 0
 		for i, cat := range visibleSummary {
 			if rowCount >= maxRows {
-				break // Don't overflow
+				break
 			}
-
-			formattedAmount := formatAmountWithCommas(cat.Total)
-			line := fmt.Sprintf("%-*s  %*d  %*s", categoryWidth, cat.Category, countWidth, cat.Count, amountWidth, formattedAmount)
-
-			// Highlight selected row if this box is selected
 			actualRowIndex := m.summaryScrollOffset + i
-			if m.isSelected(summaryBox) && actualRowIndex == m.summarySelectedRow {
-				content.WriteString(m.styles.Selected.Render(line) + "\n")
-			} else {
-				content.WriteString(m.styles.Line.Render(line) + "\n")
-			}
+			isRowSelected := m.isSelected(summaryBox) && actualRowIndex == m.summarySelectedRow
+			content.WriteString(m.renderSummaryRow(cat, widths, isRowSelected) + "\n")
 			rowCount++
 		}
 
-		// Separator before total
+		separator := strings.Repeat("─", tableWidth)
 		content.WriteString(m.styles.Muted.Render(separator) + "\n")
-
-		// Grand total
-		formattedTotal := formatAmountWithCommas(m.total)
-		totalLine := fmt.Sprintf("%-*s  %*s  %*s", categoryWidth, "Total", countWidth, "", amountWidth, formattedTotal)
-		content.WriteString(m.styles.Header.Render(totalLine))
+		content.WriteString(m.styles.Header.Render(m.renderSummaryTotalLine(widths, m.total)))
 	}
 
-	// Choose border color based on selection
 	isSelected := m.isSelected(summaryBox)
 	borderColor := m.styles.Theme.Border
 	if isSelected {
 		borderColor = m.styles.Theme.Primary
 	}
-
-	// Format title with bold if selected
 	title := m.formatSummaryTitle(borderColor, isSelected)
 
 	return m.styles.DrawBorderWithHeightAndTitleBold(
@@ -425,7 +419,7 @@ func (m model) renderSummaryBox() string {
 		RoundedBorderChars(),
 		borderColor,
 		title,
-		false, // We handle bold in the title itself
+		false,
 	)
 }
 
@@ -528,16 +522,50 @@ func (m model) formatSummaryTitle(borderColor color.Color, isSelected bool) stri
 	return shortcutStyle.Render("[s]") + textStyle.Render("Summary")
 }
 
+// calculateOverlayColumnWidths computes column widths for the overlay table (Date, Description, Amount)
+func (m model) calculateOverlayColumnWidths(tableWidth int) overlayColumnWidths {
+	dateWidth := tableDateWidth
+	amountWidth := tableAmountWidth
+	spacing := tableColumnSpacing
+	totalSpacing := spacing * tableColumnGapsOverlay
+	descriptionWidth := tableWidth - dateWidth - totalSpacing - amountWidth
+	if descriptionWidth < tableMinDescWidth {
+		descriptionWidth = tableMinDescWidth
+	}
+	if dateWidth+descriptionWidth+amountWidth+totalSpacing > tableWidth {
+		dateWidth = tableWidth - descriptionWidth - amountWidth - totalSpacing
+		if dateWidth < tableMinDescWidth {
+			dateWidth = tableMinDescWidth
+		}
+	}
+	return overlayColumnWidths{Date: dateWidth, Description: descriptionWidth, Amount: amountWidth}
+}
+
+// buildOverlayTableHeader returns the overlay table header and separator
+func (m model) buildOverlayTableHeader(tableWidth int, widths overlayColumnWidths) string {
+	header := fmt.Sprintf("%-*s  %-*s  %*s", widths.Date, "Date", widths.Description, "Description", widths.Amount, "Amount")
+	separator := strings.Repeat("─", tableWidth)
+	return m.styles.Header.Render(header) + "\n" + m.styles.Muted.Render(separator) + "\n"
+}
+
+// renderOverlayExpenseRow renders a single expense row in the overlay (no selection highlight)
+func (m model) renderOverlayExpenseRow(expense types.Expense, widths overlayColumnWidths) string {
+	localDate := expense.Date.Local()
+	formattedAmount := formatAmountWithCommas(expense.Amount)
+	datePart := m.styles.Line.Width(widths.Date).Align(lipgloss.Left).Render(localDate.Format("2006-01-02"))
+	descriptionPart := m.styles.Line.Width(widths.Description).Align(lipgloss.Left).Render(expense.Description)
+	amountPart := m.styles.Line.Width(widths.Amount).Align(lipgloss.Right).Render(formattedAmount)
+	spacingStr := m.styles.Line.Render("  ")
+	return datePart + spacingStr + descriptionPart + spacingStr + amountPart
+}
+
 // renderOverlay renders the overlay showing expenses for the selected category
 func (m model) renderOverlay() string {
-	// Get selected category
 	if m.summarySelectedRow < 0 || m.summarySelectedRow >= len(m.summary) {
 		return m.styles.Muted.Render("No category selected")
 	}
 
 	selectedCategory := m.summary[m.summarySelectedRow].Category
-
-	// Filter expenses by category
 	filteredExpenses := m.filterExpensesByCategory(selectedCategory)
 
 	if len(filteredExpenses) == 0 {
@@ -552,7 +580,6 @@ func (m model) renderOverlay() string {
 		)
 	}
 
-	// Calculate overlay dimensions (centered, reasonable size)
 	overlayWidth := m.width - overlaySideMargin
 	if overlayWidth < overlayMinWidth {
 		overlayWidth = overlayMinWidth
@@ -560,82 +587,25 @@ func (m model) renderOverlay() string {
 	if overlayWidth > overlayMaxWidth {
 		overlayWidth = overlayMaxWidth
 	}
-
-	// Calculate available width for table
 	tableWidth := overlayWidth - tableBorderPadding
-
-	// Column widths: Date and Amount
-	dateWidth := tableDateWidth
-	amountWidth := tableAmountWidth
-	spacing := tableColumnSpacing
-	totalSpacing := spacing * tableColumnGapsOverlay
-	descriptionWidth := tableWidth - dateWidth - totalSpacing - amountWidth
-	if descriptionWidth < tableMinDescWidth {
-		descriptionWidth = tableMinDescWidth
-	}
-
-	// Ensure we have enough space
-	if dateWidth+descriptionWidth+amountWidth+totalSpacing > tableWidth {
-		dateWidth = tableWidth - descriptionWidth - amountWidth - totalSpacing
-		if dateWidth < tableMinDescWidth {
-			dateWidth = tableMinDescWidth
-		}
-	}
+	widths := m.calculateOverlayColumnWidths(tableWidth)
 
 	var content strings.Builder
+	content.WriteString(m.buildOverlayTableHeader(tableWidth, widths))
 
-	// Table header
-	header := fmt.Sprintf("%-*s  %-*s  %*s", dateWidth, "Date", descriptionWidth, "Description", amountWidth, "Amount")
-	content.WriteString(m.styles.Header.Render(header) + "\n")
-
-	// Separator line
-	separator := strings.Repeat("─", tableWidth)
-	content.WriteString(m.styles.Muted.Render(separator) + "\n")
-
-	// Calculate how many rows can fit (leave some space for header and separator)
 	maxRows := overlayMaxRows
 	if len(filteredExpenses) < maxRows {
 		maxRows = len(filteredExpenses)
 	}
-
-	// Display expenses (already sorted by date desc)
 	for i := 0; i < maxRows; i++ {
-		expense := filteredExpenses[i]
-
-		// Convert UTC time to local timezone for display
-		localDate := expense.Date.Local()
-		formattedAmount := formatAmountWithCommas(expense.Amount)
-
-		datePart := m.styles.Line.
-			Width(dateWidth).
-			Align(lipgloss.Left).
-			Render(localDate.Format("2006-01-02"))
-
-		descriptionPart := m.styles.Line.
-			Width(descriptionWidth).
-			Align(lipgloss.Left).
-			Render(expense.Description)
-
-		amountPart := m.styles.Line.
-			Width(amountWidth).
-			Align(lipgloss.Right).
-			Render(formattedAmount)
-
-		// Spacing between columns
-		spacingStr := m.styles.Line.Render("  ")
-
-		line := datePart + spacingStr + descriptionPart + spacingStr + amountPart
-		content.WriteString(line + "\n")
+		content.WriteString(m.renderOverlayExpenseRow(filteredExpenses[i], widths) + "\n")
 	}
 
-	// If there are more expenses, show a message
 	if len(filteredExpenses) > maxRows {
 		remaining := len(filteredExpenses) - maxRows
 		content.WriteString("\n")
 		content.WriteString(m.styles.Muted.Render(fmt.Sprintf("... and %d more", remaining)))
 	}
-
-	// Add help text
 	content.WriteString("\n")
 	content.WriteString(m.styles.Muted.Render("Press Space or Esc to close"))
 
