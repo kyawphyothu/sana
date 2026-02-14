@@ -293,12 +293,9 @@ func (m model) renderExpenseRow(expense types.Expense, widths expenseColumnWidth
 	descPart := baseStyle.Width(widths.Desc).Align(lipgloss.Left).Render(desc)
 	categoryColor := CategoryColor(categoryText)
 	if isSelected {
-		categoryColor = InvertColor(categoryColor)
+		categoryColor = CategoryColorSelected(categoryText)
 	}
-	categoryStyle := lipgloss.NewStyle().Foreground(categoryColor).Background(bgColor).Width(widths.Category).Align(lipgloss.Left)
-	if isSelected {
-		categoryStyle = categoryStyle.Bold(true)
-	}
+	categoryStyle := baseStyle.Foreground(categoryColor).Width(widths.Category).Align(lipgloss.Left)
 	categoryPart := categoryStyle.Render(categoryText)
 	amountPart := baseStyle.Width(widths.Amount).Align(lipgloss.Right).Render(formattedAmount)
 	spacing := baseStyle.Render("  ")

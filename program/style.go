@@ -1,7 +1,6 @@
 package program
 
 import (
-	"fmt"
 	"image/color"
 	"strings"
 
@@ -325,27 +324,22 @@ func CategoryColor(category string) color.Color {
 	}
 }
 
-// colorToHex converts color.Color to hex string for parsing
-func colorToHex(c color.Color) string {
-	r, g, b, _ := c.RGBA()
-	return fmt.Sprintf("#%02X%02X%02X", r>>8, g>>8, b>>8)
-}
-
-// InvertColor inverts a hex color by converting RGB to inverted RGB
-func InvertColor(c color.Color) color.Color {
-	hex := colorToHex(c)
-	if len(hex) < 7 {
-		return c
+// CategoryColorSelected returns the color for a given expense type category
+func CategoryColorSelected(category string) color.Color {
+	switch category {
+	case "Food":
+		return lipgloss.Color("#0a631f") // soft green
+	case "Transport":
+		return lipgloss.Color("#1F5FCC") // soft blue
+	case "Bills":
+		return lipgloss.Color("#C23D3D") // soft red
+	case "Shopping":
+		return lipgloss.Color("#C9A227") // warm yellow
+	case "Health":
+		return lipgloss.Color("#6E3FCC") // violet
+	case "Other":
+		return lipgloss.Color("#5F657A") // gray-purple
+	default:
+		return lipgloss.Color("#5F657A") // same as Other for contrast on primary
 	}
-	hex = hex[1:] // strip #
-
-	var r, g, b int
-	if _, err := fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b); err != nil || len(hex) != 6 {
-		return c
-	}
-
-	r = 255 - r
-	g = 255 - g
-	b = 255 - b
-	return lipgloss.Color(fmt.Sprintf("#%02X%02X%02X", r, g, b))
 }
