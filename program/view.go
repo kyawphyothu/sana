@@ -78,14 +78,14 @@ func (m model) renderTableBody(config TableConfig, renderRow func(globalRowIndex
 
 // View renders the entire UI
 func (m model) View() tea.View {
-	if m.width == 0 || m.height == 0 {
+	if m.ui.width == 0 || m.ui.height == 0 {
 		res := tea.NewView("Loading...")
 		res.AltScreen = true
 		return res
 	}
 
 	// Check if terminal is too small
-	if m.width < minWidth || m.height < minHeight {
+	if m.ui.width < minWidth || m.ui.height < minHeight {
 		res := tea.NewView(m.renderTooSmallMessage())
 		res.AltScreen = true
 		return res
@@ -94,7 +94,7 @@ func (m model) View() tea.View {
 	// Build the three sections
 	titleBox := m.renderTitleBox()
 
-	if m.selected == addBox {
+	if m.ui.selected == addBox {
 		res := tea.NewView(lipgloss.JoinVertical(
 			lipgloss.Left,
 			titleBox,
@@ -117,13 +117,13 @@ func (m model) View() tea.View {
 	)
 
 	// If overlay is visible, layer it on top of main content using Canvas
-	if m.showOverlay {
+	if m.ui.showOverlay {
 		overlay := m.renderOverlay()
 
 		// Create canvas with layers
 		mainLayer := lipgloss.NewLayer(mainContent).
-			Width(m.width).
-			Height(m.height).
+			Width(m.ui.width).
+			Height(m.ui.height).
 			X(0).
 			Y(0).
 			Z(0) // Background layer
@@ -138,8 +138,8 @@ func (m model) View() tea.View {
 			}
 		}
 
-		overlayX := (m.width - overlayWidth) / 2
-		overlayY := (m.height - overlayHeight) / 2
+		overlayX := (m.ui.width - overlayWidth) / 2
+		overlayY := (m.ui.height - overlayHeight) / 2
 		if overlayX < 0 {
 			overlayX = 0
 		}
@@ -172,7 +172,7 @@ func (m model) renderTitleBox() string {
 
 	return m.styles.DrawBorderWithHeightAndTitle(
 		content,
-		m.width,
+		m.ui.width,
 		titleBoxHeight,
 		DoubleBorderChars(),
 		m.styles.Theme.Border,
@@ -186,10 +186,10 @@ func (m model) renderExpensesBox() string {
 
 	var content strings.Builder
 
-	if len(m.expenses) == 0 {
+	if len(m.data.expenses) == 0 {
 		content.WriteString(m.styles.Muted.Render("No expenses yet"))
 	} else {
-		tableWidth := m.width - tableBorderPadding
+		tableWidth := m.ui.width - tableBorderPadding
 		maxRows := boxHeight - expensesBoxHeaderRows
 		if maxRows < 1 {
 			maxRows = 1
@@ -199,22 +199,22 @@ func (m model) renderExpensesBox() string {
 			TableWidth:       tableWidth,
 			Header:           m.buildExpensesTableHeader(tableWidth),
 			MaxRows:          maxRows,
-			TotalRows:        len(m.expenses),
-			ScrollOffset:     m.expensesScrollOffset,
-			SelectedRowIndex: m.expensesSelectedRow,
+			TotalRows:        len(m.data.expenses),
+			ScrollOffset:     m.ui.expensesScrollOffset,
+			SelectedRowIndex: m.ui.expensesSelectedRow,
 			HasFocus:         m.isSelected(expensesBox),
 		}
 		renderRow := func(globalRowIndex int, isSelected bool) string {
-			return m.renderExpenseRow(m.expenses[globalRowIndex], widths, isSelected)
+			return m.renderExpenseRow(m.data.expenses[globalRowIndex], widths, isSelected)
 		}
 		content.WriteString(m.renderTableBody(config, renderRow))
 	}
 
 	// Show error if any
-	if m.err != nil {
+	if m.ui.err != nil {
 		content.WriteString("\n")
 		errorStyle := m.styles.Line.Foreground(m.styles.Theme.Error)
-		content.WriteString(errorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
+		content.WriteString(errorStyle.Render(fmt.Sprintf("Error: %v", m.ui.err)))
 	}
 
 	// Choose border color based on selection
@@ -229,7 +229,7 @@ func (m model) renderExpensesBox() string {
 
 	return m.styles.DrawBorderWithHeightAndTitleBold(
 		content.String(),
-		m.width,
+		m.ui.width,
 		boxHeight,
 		RoundedBorderChars(),
 		borderColor,
@@ -356,10 +356,10 @@ func (m model) renderAddBox() string {
 
 	// Form rows (each textinput has its own prompt)
 	rows := []string{
-		m.addType.View(),
-		m.addAmount.View(),
-		m.addDescription.View(),
-		m.addDate.View(),
+		m.form.typeField.View(),
+		m.form.amount.View(),
+		m.form.description.View(),
+		m.form.date.View(),
 	}
 	formContent := strings.Join(rows, "\n\n")
 
@@ -373,8 +373,8 @@ func (m model) renderAddBox() string {
 	content := formContent + "\n\n" + helpText + "\n" + typesText
 
 	// Show validation/creation error below form if any
-	if m.err != nil && m.selected == addBox {
-		content += "\n\n" + m.styles.Line.Foreground(m.styles.Theme.Error).Render("Error: "+m.err.Error())
+	if m.ui.err != nil && m.ui.selected == addBox {
+		content += "\n\n" + m.styles.Line.Foreground(m.styles.Theme.Error).Render("Error: "+m.ui.err.Error())
 	}
 
 	// Choose border color based on selection
@@ -389,7 +389,7 @@ func (m model) renderAddBox() string {
 
 	return m.styles.DrawBorderWithHeightAndTitleBold(
 		content,
-		m.width,
+		m.ui.width,
 		boxHeight,
 		RoundedBorderChars(),
 		borderColor,
@@ -401,32 +401,32 @@ func (m model) renderAddBox() string {
 // renderSummaryBox creates the summary section grouped by category (third box)
 func (m model) renderSummaryBox() string {
 	expensesHeight := m.calculateExpensesBoxHeight()
-	boxHeight := m.height - titleBoxHeight - expensesHeight
+	boxHeight := m.ui.height - titleBoxHeight - expensesHeight
 
 	var content strings.Builder
 
-	if len(m.expenses) == 0 {
+	if len(m.data.expenses) == 0 {
 		content.WriteString(m.styles.Muted.Render("No expenses to summarize"))
 	} else {
-		tableWidth := m.width - tableBorderPadding
+		tableWidth := m.ui.width - tableBorderPadding
 		maxRows := boxHeight - summaryBoxHeaderRows
 		if maxRows < 1 {
 			maxRows = 1
 		}
 		widths := m.calculateSummaryColumnWidths(tableWidth)
-		footer := m.styles.Header.Render(m.renderSummaryTotalLine(widths, m.total))
+		footer := m.styles.Header.Render(m.renderSummaryTotalLine(widths, m.data.total))
 		config := TableConfig{
 			TableWidth:       tableWidth,
 			Header:           m.buildSummaryTableHeader(tableWidth),
 			MaxRows:          maxRows,
-			TotalRows:        len(m.summary),
-			ScrollOffset:     m.summaryScrollOffset,
-			SelectedRowIndex: m.summarySelectedRow,
+			TotalRows:        len(m.data.summary),
+			ScrollOffset:     m.ui.summaryScrollOffset,
+			SelectedRowIndex: m.ui.summarySelectedRow,
 			HasFocus:         m.isSelected(summaryBox),
 			Footer:           footer,
 		}
 		renderRow := func(globalRowIndex int, isSelected bool) string {
-			return m.renderSummaryRow(m.summary[globalRowIndex], widths, isSelected)
+			return m.renderSummaryRow(m.data.summary[globalRowIndex], widths, isSelected)
 		}
 		content.WriteString(m.renderTableBody(config, renderRow))
 	}
@@ -440,7 +440,7 @@ func (m model) renderSummaryBox() string {
 
 	return m.styles.DrawBorderWithHeightAndTitleBold(
 		content.String(),
-		m.width,
+		m.ui.width,
 		boxHeight,
 		RoundedBorderChars(),
 		borderColor,
@@ -453,11 +453,11 @@ func (m model) renderSummaryBox() string {
 func (m model) renderTooSmallMessage() string {
 	message := fmt.Sprintf(
 		"Terminal too small!\n\nMinimum size: %dx%d\nCurrent size: %dx%d\n\nPlease resize your terminal.",
-		minWidth, minHeight, m.width, m.height,
+		minWidth, minHeight, m.ui.width, m.ui.height,
 	)
 	return m.styles.Parent.
-		Width(m.width).
-		Height(m.height).
+		Width(m.ui.width).
+		Height(m.ui.height).
 		Align(lipgloss.Center).
 		Render(m.styles.Line.Foreground(m.styles.Theme.Error).Render(message))
 }
@@ -467,7 +467,7 @@ func (m model) renderTooSmallMessage() string {
 // calculateExpensesBoxHeight calculates height for the stats box (middle box)
 func (m model) calculateExpensesBoxHeight() int {
 	// Remaining height after title box
-	remainingHeight := m.height - titleBoxHeight
+	remainingHeight := m.ui.height - titleBoxHeight
 
 	// Give stats box half of remaining space (rounded down)
 	// The expenses box will get all remaining space to fill terminal completely
@@ -476,7 +476,7 @@ func (m model) calculateExpensesBoxHeight() int {
 
 func (m model) calculateAddBoxHeight() int {
 	// Remaining height after title box
-	remainingHeight := m.height - titleBoxHeight
+	remainingHeight := m.ui.height - titleBoxHeight
 
 	// Give add box all remaining space
 	return remainingHeight
@@ -545,11 +545,11 @@ func (m model) renderOverlayExpenseRow(expense types.Expense, widths overlayColu
 
 // renderOverlay renders the overlay showing expenses for the selected category
 func (m model) renderOverlay() string {
-	if m.summarySelectedRow < 0 || m.summarySelectedRow >= len(m.summary) {
+	if m.ui.summarySelectedRow < 0 || m.ui.summarySelectedRow >= len(m.data.summary) {
 		return m.styles.Muted.Render("No category selected")
 	}
 
-	selectedCategory := m.summary[m.summarySelectedRow].Category
+	selectedCategory := m.data.summary[m.ui.summarySelectedRow].Category
 	filteredExpenses := m.filterExpensesByCategory(selectedCategory)
 
 	if len(filteredExpenses) == 0 {
@@ -564,7 +564,7 @@ func (m model) renderOverlay() string {
 		)
 	}
 
-	overlayWidth := m.width - overlaySideMargin
+	overlayWidth := m.ui.width - overlaySideMargin
 	if overlayWidth < overlayMinWidth {
 		overlayWidth = overlayMinWidth
 	}
@@ -629,13 +629,13 @@ func (m model) formatExpensesAndAddBoxTitle(borderColor color.Color) string {
 		Foreground(borderColor).
 		Background(m.styles.Theme.Background)
 
-	// Build title with appropriate bold sections based on m.selected
+	// Build title with appropriate bold sections based on m.ui.selected
 	var expensesText, addText string
 
 	shortcutExpensesText := "[e]"
 
 	// Only bold and brighten if the corresponding box is actually selected
-	switch m.selected {
+	switch m.ui.selected {
 	case expensesBox:
 		expensesText = selectedStyle.Render("Expenses")
 		addText = unselectedStyle.Render("Add Expense")

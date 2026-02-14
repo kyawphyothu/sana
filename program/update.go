@@ -7,32 +7,32 @@ import (
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.ui.width = msg.Width
+		m.ui.height = msg.Height
 		return m, nil
 
 	case dataLoadedMsg:
 		if msg.Err != nil {
-			m.err = msg.Err
+			m.ui.err = msg.Err
 			return m, nil
 		}
-		m.expenses = msg.Expenses
-		m.summary = msg.Summary
-		m.total = msg.Total
+		m.data.expenses = msg.Expenses
+		m.data.summary = msg.Summary
+		m.data.total = msg.Total
 		return m, nil
 
 	case expenseCreatedMsg:
 		if msg.Err != nil {
-			m.err = msg.Err
+			m.ui.err = msg.Err
 			return m, nil
 		}
-		m.err = nil
+		m.ui.err = nil
 		m.addFormReset()
-		m.selected = expensesBox
+		m.ui.selected = expensesBox
 		return m, loadData(m.db)
 
 	case formValidationErrMsg:
-		m.err = msg.Err
+		m.ui.err = msg.Err
 		return m, nil
 
 	case tea.KeyMsg:
@@ -55,11 +55,11 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// When add box is selected, handle form navigation and forward keys to focused input
-	if m.selected == addBox {
+	if m.ui.selected == addBox {
 		switch msg.String() {
 		case "tab":
 			// If we just completed a suggestion, move to next field
-			if m.typeFieldCompleted {
+			if m.form.typeCompleted {
 				m.addFormFocusNext() // This will reset typeFieldCompleted
 				return m, nil
 			}
@@ -70,7 +70,7 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				*in, cmd = in.Update(msg)
 				// Check if the value is now a complete match (suggestion was accepted)
 				if m.isValueCompleteSuggestion() {
-					m.typeFieldCompleted = true
+					m.form.typeCompleted = true
 				}
 				return m, cmd
 			}
@@ -89,7 +89,7 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "esc":
-			m.selected = expensesBox
+			m.ui.selected = expensesBox
 			return m, nil
 		}
 
@@ -98,16 +98,16 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		*in, cmd = in.Update(msg)
 		// Reset completion flag if user is typing (not Tab or Enter)
-		if msg.String() != "tab" && msg.String() != "enter" && m.addFormFocused == addFormType {
-			m.typeFieldCompleted = false
+		if msg.String() != "tab" && msg.String() != "enter" && m.form.focused == addFormType {
+			m.form.typeCompleted = false
 		}
 		return m, cmd
 	}
 
 	// If overlay is open, only handle overlay-specific keys
-	if m.showOverlay {
+	if m.ui.showOverlay {
 		if isSpace || msg.String() == "esc" {
-			m.showOverlay = false
+			m.ui.showOverlay = false
 			return m, nil
 		}
 		if msg.String() == "ctrl+c" {
@@ -119,10 +119,10 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Handle space key for overlay toggle
 	if isSpace {
-		if m.selected == summaryBox && len(m.summary) > 0 {
+		if m.ui.selected == summaryBox && len(m.data.summary) > 0 {
 			// Ensure we have a valid selected row
-			if m.summarySelectedRow >= 0 && m.summarySelectedRow < len(m.summary) {
-				m.showOverlay = !m.showOverlay
+			if m.ui.summarySelectedRow >= 0 && m.ui.summarySelectedRow < len(m.data.summary) {
+				m.ui.showOverlay = !m.ui.showOverlay
 			}
 		}
 		return m, nil
@@ -136,13 +136,13 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.resetRowSelection()
 		return m, loadData(m.db)
 	case "e": // Select expenses box
-		m.selected = expensesBox
+		m.ui.selected = expensesBox
 		return m, nil
 	case "a": // Select add box
-		m.selected = addBox
+		m.ui.selected = addBox
 		return m, nil
 	case "s": // Select summary box
-		m.selected = summaryBox
+		m.ui.selected = summaryBox
 		return m, nil
 	case "j", "down":
 		maxRows := m.calculateMaxVisibleRows()
@@ -161,9 +161,9 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // calculateMaxVisibleRows returns the max number of visible rows in the currently selected box
 func (m model) calculateMaxVisibleRows() int {
-	boxHeight := (m.height - titleHeightForRows) / boxHeightDivisor
+	boxHeight := (m.ui.height - titleHeightForRows) / boxHeightDivisor
 
-	switch m.selected {
+	switch m.ui.selected {
 	case expensesBox:
 		// Expenses box: boxHeight - borders - header - separator
 		return boxHeight - expensesBoxRowOffset

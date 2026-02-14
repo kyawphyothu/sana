@@ -34,13 +34,15 @@ const (
 
 type addFormFocus int
 
-type model struct {
-	db       *sql.DB
+// expenseData holds loaded expense data from the database.
+type expenseData struct {
 	expenses []types.Expense
-	summary  []types.CategorySummary // Category summaries from database
-	total    float64                 // Grand total from database
-	styles   Styles
+	summary  []types.CategorySummary
+	total    float64
+}
 
+// uiState holds viewport and UI interaction state.
+type uiState struct {
 	width  int
 	height int
 
@@ -52,18 +54,26 @@ type model struct {
 	summarySelectedRow   int
 	summaryScrollOffset  int
 
-	// Overlay state
 	showOverlay bool
+	err         error
+}
 
-	// Add expense form
-	addDescription     textinput.Model
-	addAmount          textinput.Model
-	addDate            textinput.Model
-	addType            textinput.Model
-	addFormFocused     addFormFocus
-	typeFieldCompleted bool // Track if Type field suggestion was just completed
+// addExpenseForm holds the add-expense form inputs and focus state.
+type addExpenseForm struct {
+	description   textinput.Model
+	amount        textinput.Model
+	date          textinput.Model
+	typeField     textinput.Model
+	focused       addFormFocus
+	typeCompleted bool // Track if Type field suggestion was just completed
+}
 
-	err error
+type model struct {
+	db     *sql.DB
+	data   expenseData
+	ui     uiState
+	form   addExpenseForm
+	styles Styles
 }
 
 // dataLoadedMsg is sent when data loading finishes (in Init).
@@ -118,7 +128,7 @@ func InitialModel(db *sql.DB) model {
 	theme := DefaultTheme()
 	styles := NewStyles(theme)
 
-	// Form inputs (width set in View when we have m.width)
+	// Form inputs (width set in View when we have m.ui.width)
 	desc := newAddFormInput("", formWidth)
 	desc.Prompt = "Description: "
 	setTextInputStyles(&desc, theme)
@@ -141,21 +151,26 @@ func InitialModel(db *sql.DB) model {
 	typ.Focus()
 
 	return model{
-		db:                   db,
-		expenses:             []types.Expense{},
-		summary:              []types.CategorySummary{},
-		styles:               styles,
-		selected:             expensesBox,
-		expensesSelectedRow:  0,
-		expensesScrollOffset: 0,
-		summarySelectedRow:   0,
-		summaryScrollOffset:  0,
-		showOverlay:          false,
-		addDescription:       desc,
-		addAmount:            amount,
-		addDate:              date,
-		addType:              typ,
-		addFormFocused:       addFormType,
+		db:   db,
+		data: expenseData{
+			expenses: []types.Expense{},
+			summary:  []types.CategorySummary{},
+		},
+		ui: uiState{
+			selected:             expensesBox,
+			expensesSelectedRow:  0,
+			expensesScrollOffset: 0,
+			summarySelectedRow:   0,
+			summaryScrollOffset:  0,
+		},
+		form: addExpenseForm{
+			description: desc,
+			amount:      amount,
+			date:        date,
+			typeField:   typ,
+			focused:     addFormType,
+		},
+		styles: styles,
 	}
 }
 
@@ -191,107 +206,107 @@ func loadData(db *sql.DB) tea.Cmd {
 }
 
 func (m *model) moveRowUp() {
-	switch m.selected {
+	switch m.ui.selected {
 	case expensesBox:
-		if m.expensesSelectedRow > 0 {
-			m.expensesSelectedRow--
+		if m.ui.expensesSelectedRow > 0 {
+			m.ui.expensesSelectedRow--
 			// Scroll up if needed
-			if m.expensesSelectedRow < m.expensesScrollOffset {
-				m.expensesScrollOffset = m.expensesSelectedRow
+			if m.ui.expensesSelectedRow < m.ui.expensesScrollOffset {
+				m.ui.expensesScrollOffset = m.ui.expensesSelectedRow
 			}
 		}
 	case summaryBox:
-		if m.summarySelectedRow > 0 {
-			m.summarySelectedRow--
+		if m.ui.summarySelectedRow > 0 {
+			m.ui.summarySelectedRow--
 			// Scroll up if needed
-			if m.summarySelectedRow < m.summaryScrollOffset {
-				m.summaryScrollOffset = m.summarySelectedRow
+			if m.ui.summarySelectedRow < m.ui.summaryScrollOffset {
+				m.ui.summaryScrollOffset = m.ui.summarySelectedRow
 			}
 		}
 	}
 }
 
 func (m *model) moveRowDown(maxVisibleRows int) {
-	switch m.selected {
+	switch m.ui.selected {
 	case expensesBox:
-		maxRow := len(m.expenses) - 1
-		if m.expensesSelectedRow < maxRow {
-			m.expensesSelectedRow++
+		maxRow := len(m.data.expenses) - 1
+		if m.ui.expensesSelectedRow < maxRow {
+			m.ui.expensesSelectedRow++
 			m.adjustScrollOffset(maxVisibleRows)
 		}
 	case summaryBox:
-		maxRow := len(m.summary) - 1
-		if m.summarySelectedRow < maxRow {
-			m.summarySelectedRow++
+		maxRow := len(m.data.summary) - 1
+		if m.ui.summarySelectedRow < maxRow {
+			m.ui.summarySelectedRow++
 			m.adjustScrollOffset(maxVisibleRows)
 		}
 	}
 }
 
 func (m *model) resetRowSelection() {
-	m.expensesSelectedRow = 0
-	m.expensesScrollOffset = 0
-	m.summarySelectedRow = 0
-	m.summaryScrollOffset = 0
+	m.ui.expensesSelectedRow = 0
+	m.ui.expensesScrollOffset = 0
+	m.ui.summarySelectedRow = 0
+	m.ui.summaryScrollOffset = 0
 }
 
 func (m model) isSelected(box selectedBox) bool {
-	return m.selected == box
+	return m.ui.selected == box
 }
 
 func (m *model) moveRowToTop() {
-	switch m.selected {
+	switch m.ui.selected {
 	case expensesBox:
-		m.expensesSelectedRow = 0
-		m.expensesScrollOffset = 0
+		m.ui.expensesSelectedRow = 0
+		m.ui.expensesScrollOffset = 0
 	case summaryBox:
-		m.summarySelectedRow = 0
-		m.summaryScrollOffset = 0
+		m.ui.summarySelectedRow = 0
+		m.ui.summaryScrollOffset = 0
 	}
 }
 
 func (m *model) moveRowToBottom(maxVisibleRows int) {
-	switch m.selected {
+	switch m.ui.selected {
 	case expensesBox:
-		m.expensesSelectedRow = len(m.expenses) - 1
+		m.ui.expensesSelectedRow = len(m.data.expenses) - 1
 		m.adjustScrollOffset(maxVisibleRows)
 	case summaryBox:
-		m.summarySelectedRow = len(m.summary) - 1
+		m.ui.summarySelectedRow = len(m.data.summary) - 1
 		m.adjustScrollOffset(maxVisibleRows)
 	}
 }
 
 // addFormInput returns the currently focused form input.
 func (m *model) addFormInput() *textinput.Model {
-	switch m.addFormFocused {
+	switch m.form.focused {
 	case addFormDescription:
-		return &m.addDescription
+		return &m.form.description
 	case addFormAmount:
-		return &m.addAmount
+		return &m.form.amount
 	case addFormDate:
-		return &m.addDate
+		return &m.form.date
 	case addFormType:
-		return &m.addType
+		return &m.form.typeField
 	default:
-		return &m.addType
+		return &m.form.typeField
 	}
 }
 
 // addFormFocusNext moves focus to the next form field (wraps to first).
 func (m *model) addFormFocusNext() {
 	m.addFormInput().Blur()
-	m.typeFieldCompleted = false // Reset completion flag when moving focus
-	m.addFormFocused = (m.addFormFocused + 1) % addFormNumFields
+	m.form.typeCompleted = false // Reset completion flag when moving focus
+	m.form.focused = (m.form.focused + 1) % addFormNumFields
 	m.addFormInput().Focus()
 }
 
 // addFormFocusPrev moves focus to the previous form field (wraps to last).
 func (m *model) addFormFocusPrev() {
 	m.addFormInput().Blur()
-	m.typeFieldCompleted = false // Reset completion flag when moving focus
-	m.addFormFocused--
-	if m.addFormFocused < 0 {
-		m.addFormFocused = addFormNumFields - 1
+	m.form.typeCompleted = false // Reset completion flag when moving focus
+	m.form.focused--
+	if m.form.focused < 0 {
+		m.form.focused = addFormNumFields - 1
 	}
 	m.addFormInput().Focus()
 }
@@ -299,26 +314,26 @@ func (m *model) addFormFocusPrev() {
 // hasMatchedSuggestions checks if the Type field has matched suggestions
 func (m *model) hasMatchedSuggestions() bool {
 	// Only Type field has suggestions enabled
-	if m.addFormFocused != addFormType {
+	if m.form.focused != addFormType {
 		return false
 	}
 	// Check if there are matched suggestions
-	suggestions := m.addType.MatchedSuggestions()
+	suggestions := m.form.typeField.MatchedSuggestions()
 	return len(suggestions) > 0
 }
 
 // isValueCompleteSuggestion checks if the current Type field value is a complete match for a suggestion
 func (m *model) isValueCompleteSuggestion() bool {
-	if m.addFormFocused != addFormType {
+	if m.form.focused != addFormType {
 		return false
 	}
-	currentValue := strings.ToLower(strings.TrimSpace(m.addType.Value()))
+	currentValue := strings.ToLower(strings.TrimSpace(m.form.typeField.Value()))
 	if currentValue == "" {
 		return false
 	}
 	// Check against all available suggestions (not just matched ones)
 	// because after accepting, the value is the full suggestion text
-	suggestions := m.addType.AvailableSuggestions()
+	suggestions := m.form.typeField.AvailableSuggestions()
 	for _, suggestion := range suggestions {
 		if strings.ToLower(suggestion) == currentValue {
 			return true
@@ -329,10 +344,10 @@ func (m *model) isValueCompleteSuggestion() bool {
 
 // addFormSubmit validates inputs, creates expense, and returns a command that sends expenseCreatedMsg or formValidationErrMsg.
 func (m *model) addFormSubmit() tea.Cmd {
-	desc := strings.TrimSpace(m.addDescription.Value())
-	amountStr := strings.TrimSpace(m.addAmount.Value())
-	dateStr := strings.TrimSpace(m.addDate.Value())
-	typeStr := strings.TrimSpace(m.addType.Value())
+	desc := strings.TrimSpace(m.form.description.Value())
+	amountStr := strings.TrimSpace(m.form.amount.Value())
+	dateStr := strings.TrimSpace(m.form.date.Value())
+	typeStr := strings.TrimSpace(m.form.typeField.Value())
 
 	amount, err := strconv.ParseFloat(amountStr, 64)
 	if err != nil || amount <= 0 {
@@ -377,14 +392,14 @@ func (m *model) addFormSubmit() tea.Cmd {
 
 // addFormReset clears form fields and refocuses description.
 func (m *model) addFormReset() {
-	m.addDescription.SetValue("")
-	m.addAmount.SetValue("")
-	m.addDate.SetValue(time.Now().Format("2006-01-02"))
-	m.addType.SetValue("")
-	m.typeFieldCompleted = false // Reset completion flag
+	m.form.description.SetValue("")
+	m.form.amount.SetValue("")
+	m.form.date.SetValue(time.Now().Format("2006-01-02"))
+	m.form.typeField.SetValue("")
+	m.form.typeCompleted = false // Reset completion flag
 	m.addFormInput().Blur()
-	m.addFormFocused = addFormType
-	m.addType.Focus()
+	m.form.focused = addFormType
+	m.form.typeField.Focus()
 }
 
 // updatePromptStyles updates prompt colors based on focus state
@@ -397,10 +412,10 @@ func (m *model) updatePromptStyles() {
 	unfocusedStyle := lipgloss.NewStyle().Foreground(theme.Muted).Bold(false)
 
 	// Update each input's prompt style based on focus
-	updateInputPromptStyle(&m.addType, m.addFormFocused == addFormType, focusedStyle, unfocusedStyle)
-	updateInputPromptStyle(&m.addAmount, m.addFormFocused == addFormAmount, focusedStyle, unfocusedStyle)
-	updateInputPromptStyle(&m.addDescription, m.addFormFocused == addFormDescription, focusedStyle, unfocusedStyle)
-	updateInputPromptStyle(&m.addDate, m.addFormFocused == addFormDate, focusedStyle, unfocusedStyle)
+	updateInputPromptStyle(&m.form.typeField, m.form.focused == addFormType, focusedStyle, unfocusedStyle)
+	updateInputPromptStyle(&m.form.amount, m.form.focused == addFormAmount, focusedStyle, unfocusedStyle)
+	updateInputPromptStyle(&m.form.description, m.form.focused == addFormDescription, focusedStyle, unfocusedStyle)
+	updateInputPromptStyle(&m.form.date, m.form.focused == addFormDate, focusedStyle, unfocusedStyle)
 }
 
 // updateInputPromptStyle updates the prompt style for a single input
@@ -414,31 +429,31 @@ func updateInputPromptStyle(ti *textinput.Model, isFocused bool, focusedStyle, u
 
 // adjustScrollOffset adjusts the scroll offset to the selected row (ensure row visible)
 func (m *model) adjustScrollOffset(maxVisibleRows int) {
-	switch m.selected {
+	switch m.ui.selected {
 	case expensesBox:
 		// Scroll down if needed
-		if m.expensesSelectedRow >= m.expensesScrollOffset+maxVisibleRows {
-			m.expensesScrollOffset = m.expensesSelectedRow - maxVisibleRows + 1
+		if m.ui.expensesSelectedRow >= m.ui.expensesScrollOffset+maxVisibleRows {
+			m.ui.expensesScrollOffset = m.ui.expensesSelectedRow - maxVisibleRows + 1
 		}
 		// Ensure we don't scroll past the end
-		maxScrollOffset := len(m.expenses) - maxVisibleRows
+		maxScrollOffset := len(m.data.expenses) - maxVisibleRows
 		if maxScrollOffset < 0 {
 			maxScrollOffset = 0
 		}
-		if m.expensesScrollOffset > maxScrollOffset {
-			m.expensesScrollOffset = maxScrollOffset
+		if m.ui.expensesScrollOffset > maxScrollOffset {
+			m.ui.expensesScrollOffset = maxScrollOffset
 		}
 	case summaryBox:
-		if m.summarySelectedRow >= m.summaryScrollOffset+maxVisibleRows {
-			m.summaryScrollOffset = m.summarySelectedRow - maxVisibleRows + 1
+		if m.ui.summarySelectedRow >= m.ui.summaryScrollOffset+maxVisibleRows {
+			m.ui.summaryScrollOffset = m.ui.summarySelectedRow - maxVisibleRows + 1
 		}
 		// Ensure we don't scroll past the end
-		maxScrollOffset := len(m.summary) - maxVisibleRows
+		maxScrollOffset := len(m.data.summary) - maxVisibleRows
 		if maxScrollOffset < 0 {
 			maxScrollOffset = 0
 		}
-		if m.summaryScrollOffset > maxScrollOffset {
-			m.summaryScrollOffset = maxScrollOffset
+		if m.ui.summaryScrollOffset > maxScrollOffset {
+			m.ui.summaryScrollOffset = maxScrollOffset
 		}
 	}
 }

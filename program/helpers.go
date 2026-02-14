@@ -63,7 +63,7 @@ func (m model) filterExpensesByCategory(categoryName string) []types.Expense {
 
 	// Filter expenses (maintains date desc order from DB)
 	var filtered []types.Expense
-	for _, expense := range m.expenses {
+	for _, expense := range m.data.expenses {
 		if expense.Type == targetType {
 			filtered = append(filtered, expense)
 		}
