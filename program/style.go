@@ -125,6 +125,16 @@ type BorderChars struct {
 	Vertical    string
 }
 
+// BorderOptions configures border drawing. Height 0 means content-based height.
+type BorderOptions struct {
+	Width       int
+	Height      int
+	Title       string
+	Bold        bool
+	BorderChars BorderChars
+	Color       color.Color
+}
+
 // RoundedBorderChars returns rounded box-drawing characters
 func RoundedBorderChars() BorderChars {
 	return BorderChars{
@@ -161,114 +171,66 @@ func DoubleBorderChars() BorderChars {
 	}
 }
 
-// DrawBorder manually draws a border around content
-func (s Styles) DrawBorder(content string, width int, borderChars BorderChars, borderColor color.Color) string {
-	return s.DrawBorderWithTitle(content, width, borderChars, borderColor, "")
-}
-
-// DrawBorderWithTitle manually draws a border around content with optional title in top border
-func (s Styles) DrawBorderWithTitle(content string, width int, borderChars BorderChars, borderColor color.Color, title string) string {
-	return s.DrawBorderWithTitleBold(content, width, borderChars, borderColor, title, false)
-}
-
-// DrawBorderWithTitleBold manually draws a border with optional title and bold option
-func (s Styles) DrawBorderWithTitleBold(content string, width int, borderChars BorderChars, borderColor color.Color, title string, bold bool) string {
+// DrawBorder draws a border around content using the given options.
+// When opts.Height is 0, height is determined by content; otherwise the box has fixed height.
+func (s Styles) DrawBorder(content string, opts BorderOptions) string {
 	lines := splitLines(content)
+
+	// Default color to theme border if not set
+	borderColor := opts.Color
+	if borderColor == nil {
+		borderColor = s.Theme.Border
+	}
 
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
 
 	// Calculate inner width (excluding border characters and padding)
-	innerWidth := width - innerWidthPadding
+	innerWidth := opts.Width - innerWidthPadding
 	if innerWidth < 1 {
 		innerWidth = 1
+	}
+
+	innerHeight := 0
+	if opts.Height > 0 {
+		innerHeight = opts.Height - innerHeightPadding
+		if innerHeight < 1 {
+			innerHeight = 1
+		}
+	} else {
+		innerHeight = len(lines)
+		if innerHeight < 1 {
+			innerHeight = 1
+		}
 	}
 
 	var result strings.Builder
 
 	// Top border with optional title
-	topBorder := s.buildTopBorder(width, borderChars, title, borderStyle, bold)
+	topBorder := s.buildTopBorder(opts.Width, opts.BorderChars, opts.Title, borderStyle, opts.Bold)
 	result.WriteString(topBorder + "\n")
 
 	// Create padding style with background
 	paddingStyle := lipgloss.NewStyle().Background(s.Theme.Background)
 
-	// Content lines with side borders
-	for _, line := range lines {
-		// Pad line to fit width (don't re-style, content is already styled)
-		paddedLine := padToWidth(line, innerWidth, s.Theme.Background)
-
-		borderedLine := borderStyle.Render(borderChars.Vertical) +
-			paddingStyle.Render(" ") +
-			paddedLine +
-			paddingStyle.Render(" ") +
-			borderStyle.Render(borderChars.Vertical)
-		result.WriteString(borderedLine + "\n")
-	}
-
-	// Bottom border
-	bottomBorder := borderChars.BottomLeft + strings.Repeat(borderChars.Horizontal, width-borderCornerCharsWidth) + borderChars.BottomRight
-	result.WriteString(borderStyle.Render(bottomBorder))
-
-	return result.String()
-}
-
-// DrawBorderWithHeight draws a border with specific height, padding content vertically
-func (s Styles) DrawBorderWithHeight(content string, width, height int, borderChars BorderChars, borderColor color.Color) string {
-	return s.DrawBorderWithHeightAndTitle(content, width, height, borderChars, borderColor, "")
-}
-
-// DrawBorderWithHeightAndTitle draws a border with specific height and optional title in top border
-func (s Styles) DrawBorderWithHeightAndTitle(content string, width, height int, borderChars BorderChars, borderColor color.Color, title string) string {
-	return s.DrawBorderWithHeightAndTitleBold(content, width, height, borderChars, borderColor, title, false)
-}
-
-// DrawBorderWithHeightAndTitleBold draws a border with specific height, optional title, and bold option
-func (s Styles) DrawBorderWithHeightAndTitleBold(content string, width, height int, borderChars BorderChars, borderColor color.Color, title string, bold bool) string {
-	lines := splitLines(content)
-
-	borderStyle := lipgloss.NewStyle().Foreground(borderColor).Background(s.Theme.Background)
-
-	// Calculate inner dimensions
-	innerWidth := width - innerWidthPadding
-	innerHeight := height - innerHeightPadding
-	if innerWidth < 1 {
-		innerWidth = 1
-	}
-	if innerHeight < 1 {
-		innerHeight = 1
-	}
-
-	var result strings.Builder
-
-	// Top border with optional title
-	topBorder := s.buildTopBorder(width, borderChars, title, borderStyle, bold)
-	result.WriteString(topBorder + "\n")
-
-	// Create padding style with background
-	paddingStyle := lipgloss.NewStyle().Background(s.Theme.Background)
-
-	// Pad lines to fill height
 	for i := 0; i < innerHeight; i++ {
 		var line string
 		if i < len(lines) {
 			line = lines[i]
-		} else {
-			line = ""
 		}
 
 		// Pad line to fit width (don't re-style, content is already styled)
 		paddedLine := padToWidth(line, innerWidth, s.Theme.Background)
 
-		borderedLine := borderStyle.Render(borderChars.Vertical) +
+		borderedLine := borderStyle.Render(opts.BorderChars.Vertical) +
 			paddingStyle.Render(" ") +
 			paddedLine +
 			paddingStyle.Render(" ") +
-			borderStyle.Render(borderChars.Vertical)
+			borderStyle.Render(opts.BorderChars.Vertical)
 		result.WriteString(borderedLine + "\n")
 	}
 
 	// Bottom border
-	bottomBorder := borderChars.BottomLeft + strings.Repeat(borderChars.Horizontal, width-borderCornerCharsWidth) + borderChars.BottomRight
+	bottomBorder := opts.BorderChars.BottomLeft + strings.Repeat(opts.BorderChars.Horizontal, opts.Width-borderCornerCharsWidth) + opts.BorderChars.BottomRight
 	result.WriteString(borderStyle.Render(bottomBorder))
 
 	return result.String()

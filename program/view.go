@@ -170,14 +170,13 @@ func (m model) View() tea.View {
 func (m model) renderTitleBox() string {
 	content := m.styles.Title.Render(sanaFiglet)
 
-	return m.styles.DrawBorderWithHeightAndTitle(
-		content,
-		m.ui.width,
-		titleBoxHeight,
-		DoubleBorderChars(),
-		m.styles.Theme.Border,
-		"Sana",
-	)
+	return m.styles.DrawBorder(content, BorderOptions{
+		Width:       m.ui.width,
+		Height:      titleBoxHeight,
+		Title:       "Sana",
+		BorderChars: DoubleBorderChars(),
+		Color:       m.styles.Theme.Border,
+	})
 }
 
 // renderExpensesBox creates the expenses list table section (second box)
@@ -227,15 +226,13 @@ func (m model) renderExpensesBox() string {
 	// Format title with bold for selected part
 	title := m.formatExpensesAndAddBoxTitle(borderColor)
 
-	return m.styles.DrawBorderWithHeightAndTitleBold(
-		content.String(),
-		m.ui.width,
-		boxHeight,
-		RoundedBorderChars(),
-		borderColor,
-		title,
-		false, // We handle bold in the title itself
-	)
+	return m.styles.DrawBorder(content.String(), BorderOptions{
+		Width:       m.ui.width,
+		Height:      boxHeight,
+		Title:       title,
+		BorderChars: RoundedBorderChars(),
+		Color:       borderColor,
+	})
 }
 
 // buildExpensesTableHeader returns the table header line and separator for the expenses box
@@ -387,15 +384,13 @@ func (m model) renderAddBox() string {
 	// Format title with bold for selected part
 	title := m.formatExpensesAndAddBoxTitle(borderColor)
 
-	return m.styles.DrawBorderWithHeightAndTitleBold(
-		content,
-		m.ui.width,
-		boxHeight,
-		RoundedBorderChars(),
-		borderColor,
-		title,
-		false,
-	)
+	return m.styles.DrawBorder(content, BorderOptions{
+		Width:       m.ui.width,
+		Height:      boxHeight,
+		Title:       title,
+		BorderChars: RoundedBorderChars(),
+		Color:       borderColor,
+	})
 }
 
 // renderSummaryBox creates the summary section grouped by category (third box)
@@ -438,15 +433,13 @@ func (m model) renderSummaryBox() string {
 	}
 	title := m.formatSummaryTitle(borderColor, isSelected)
 
-	return m.styles.DrawBorderWithHeightAndTitleBold(
-		content.String(),
-		m.ui.width,
-		boxHeight,
-		RoundedBorderChars(),
-		borderColor,
-		title,
-		false,
-	)
+	return m.styles.DrawBorder(content.String(), BorderOptions{
+		Width:       m.ui.width,
+		Height:      boxHeight,
+		Title:       title,
+		BorderChars: RoundedBorderChars(),
+		Color:       borderColor,
+	})
 }
 
 // renderTooSmallMessage creates small terminal message when terminal is too small
@@ -554,14 +547,13 @@ func (m model) renderOverlay() string {
 
 	if len(filteredExpenses) == 0 {
 		content := fmt.Sprintf("No expenses found for category: %s", selectedCategory)
-		return m.styles.DrawBorderWithHeightAndTitle(
-			content,
-			overlayMinWidth,
-			overlayMinHeight,
-			RoundedBorderChars(),
-			m.styles.Theme.Primary,
-			selectedCategory,
-		)
+		return m.styles.DrawBorder(content, BorderOptions{
+			Width:       overlayMinWidth,
+			Height:      overlayMinHeight,
+			Title:       selectedCategory,
+			BorderChars: RoundedBorderChars(),
+			Color:       m.styles.Theme.Primary,
+		})
 	}
 
 	overlayWidth := m.ui.width - overlaySideMargin
@@ -598,14 +590,13 @@ func (m model) renderOverlay() string {
 		overlayHeight = overlayMinHeightFallback
 	}
 
-	return m.styles.DrawBorderWithHeightAndTitle(
-		content.String(),
-		overlayWidth,
-		overlayHeight,
-		RoundedBorderChars(),
-		m.styles.Theme.Primary,
-		selectedCategory,
-	)
+	return m.styles.DrawBorder(content.String(), BorderOptions{
+		Width:       overlayWidth,
+		Height:      overlayHeight,
+		Title:       selectedCategory,
+		BorderChars: RoundedBorderChars(),
+		Color:       m.styles.Theme.Primary,
+	})
 }
 
 // formatExpensesAndAddBoxTitle formats the title for the middle box with bold for selected section
