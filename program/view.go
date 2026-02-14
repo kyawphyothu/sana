@@ -38,6 +38,44 @@ type overlayColumnWidths struct {
 	Amount      int
 }
 
+// TableConfig holds shared table layout and scroll/selection state for the generic table renderer.
+// Header and optional Footer are pre-rendered by the caller (table-specific formatting).
+// Row rendering is done via the renderRow callback so each table can keep its own row logic.
+type TableConfig struct {
+	TableWidth       int
+	Header           string
+	MaxRows          int
+	TotalRows        int
+	ScrollOffset     int
+	SelectedRowIndex int
+	HasFocus         bool
+	Footer           string // optional, e.g. summary "Total" line
+}
+
+// renderTableBody renders header, separator, visible rows (with scroll/selection), and optional footer.
+// renderRow(globalRowIndex, isSelected) is called for each visible row; the caller maps index to data.
+func (m model) renderTableBody(config TableConfig, renderRow func(globalRowIndex int, isSelected bool) string) string {
+	var b strings.Builder
+	separator := strings.Repeat("─", config.TableWidth)
+	// Header already includes header line + separator + newline from build*TableHeader
+	b.WriteString(config.Header)
+
+	start := config.ScrollOffset
+	end := min(config.ScrollOffset+config.MaxRows, config.TotalRows)
+	for i := start; i < end; i++ {
+		isSelected := config.HasFocus && i == config.SelectedRowIndex
+		b.WriteString(renderRow(i, isSelected))
+		b.WriteString("\n")
+	}
+
+	if config.Footer != "" {
+		b.WriteString(m.styles.Muted.Render(separator))
+		b.WriteString("\n")
+		b.WriteString(config.Footer)
+	}
+	return b.String()
+}
+
 // View renders the entire UI
 func (m model) View() tea.View {
 	if m.width == 0 || m.height == 0 {
@@ -152,29 +190,24 @@ func (m model) renderExpensesBox() string {
 		content.WriteString(m.styles.Muted.Render("No expenses yet"))
 	} else {
 		tableWidth := m.width - tableBorderPadding
-		content.WriteString(m.buildExpensesTableHeader(tableWidth))
-
 		maxRows := boxHeight - expensesBoxHeaderRows
 		if maxRows < 1 {
 			maxRows = 1
 		}
-
-		visibleExpenses := m.expenses
-		if m.expensesScrollOffset < len(visibleExpenses) {
-			visibleExpenses = visibleExpenses[m.expensesScrollOffset:]
-		}
-
 		widths := m.calculateExpenseColumnWidths(tableWidth)
-		rowCount := 0
-		for i, expense := range visibleExpenses {
-			if rowCount >= maxRows {
-				break
-			}
-			actualRowIndex := m.expensesScrollOffset + i
-			isRowSelected := m.isSelected(expensesBox) && actualRowIndex == m.expensesSelectedRow
-			content.WriteString(m.renderExpenseRow(expense, widths, isRowSelected) + "\n")
-			rowCount++
+		config := TableConfig{
+			TableWidth:       tableWidth,
+			Header:           m.buildExpensesTableHeader(tableWidth),
+			MaxRows:          maxRows,
+			TotalRows:        len(m.expenses),
+			ScrollOffset:     m.expensesScrollOffset,
+			SelectedRowIndex: m.expensesSelectedRow,
+			HasFocus:         m.isSelected(expensesBox),
 		}
+		renderRow := func(globalRowIndex int, isSelected bool) string {
+			return m.renderExpenseRow(m.expenses[globalRowIndex], widths, isSelected)
+		}
+		content.WriteString(m.renderTableBody(config, renderRow))
 	}
 
 	// Show error if any
@@ -376,33 +409,26 @@ func (m model) renderSummaryBox() string {
 		content.WriteString(m.styles.Muted.Render("No expenses to summarize"))
 	} else {
 		tableWidth := m.width - tableBorderPadding
-		content.WriteString(m.buildSummaryTableHeader(tableWidth))
-
 		maxRows := boxHeight - summaryBoxHeaderRows
 		if maxRows < 1 {
 			maxRows = 1
 		}
-
-		visibleSummary := m.summary
-		if m.summaryScrollOffset < len(visibleSummary) {
-			visibleSummary = visibleSummary[m.summaryScrollOffset:]
-		}
-
 		widths := m.calculateSummaryColumnWidths(tableWidth)
-		rowCount := 0
-		for i, cat := range visibleSummary {
-			if rowCount >= maxRows {
-				break
-			}
-			actualRowIndex := m.summaryScrollOffset + i
-			isRowSelected := m.isSelected(summaryBox) && actualRowIndex == m.summarySelectedRow
-			content.WriteString(m.renderSummaryRow(cat, widths, isRowSelected) + "\n")
-			rowCount++
+		footer := m.styles.Header.Render(m.renderSummaryTotalLine(widths, m.total))
+		config := TableConfig{
+			TableWidth:       tableWidth,
+			Header:           m.buildSummaryTableHeader(tableWidth),
+			MaxRows:          maxRows,
+			TotalRows:        len(m.summary),
+			ScrollOffset:     m.summaryScrollOffset,
+			SelectedRowIndex: m.summarySelectedRow,
+			HasFocus:         m.isSelected(summaryBox),
+			Footer:           footer,
 		}
-
-		separator := strings.Repeat("─", tableWidth)
-		content.WriteString(m.styles.Muted.Render(separator) + "\n")
-		content.WriteString(m.styles.Header.Render(m.renderSummaryTotalLine(widths, m.total)))
+		renderRow := func(globalRowIndex int, isSelected bool) string {
+			return m.renderSummaryRow(m.summary[globalRowIndex], widths, isSelected)
+		}
+		content.WriteString(m.renderTableBody(config, renderRow))
 	}
 
 	isSelected := m.isSelected(summaryBox)
