@@ -43,84 +43,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Get the key from KeyMsg
-	key := msg.Key()
-	// Check for space key (check both Text and Code)
-	isSpace := key.Text == " " || key.Code == ' '
-
-	// Box switching always available
 	switch msg.String() {
 	case "ctrl+c":
 		return m, tea.Quit
 	}
 
-	// When add box is selected, handle form navigation and forward keys to focused input
 	if m.ui.selected == addBox {
-		switch msg.String() {
-		case "tab":
-			// If we just completed a suggestion, move to next field
-			if m.form.typeCompleted {
-				m.addFormFocusNext() // This will reset typeFieldCompleted
-				return m, nil
-			}
-			// If Type field is focused and has matched suggestions, accept the suggestion
-			if m.hasMatchedSuggestions() {
-				in := m.addFormInput()
-				var cmd tea.Cmd
-				*in, cmd = in.Update(msg)
-				// Check if the value is now a complete match (suggestion was accepted)
-				if m.isValueCompleteSuggestion() {
-					m.form.typeCompleted = true
-				}
-				return m, cmd
-			}
-			// Otherwise, move to next field
-			m.addFormFocusNext()
-			return m, nil
-		case "down":
-			m.addFormFocusNext()
-			return m, nil
-		case "shift+tab", "up":
-			m.addFormFocusPrev()
-			return m, nil
-		case "enter":
-			if cmd := m.addFormSubmit(); cmd != nil {
-				return m, cmd
-			}
-			return m, nil
-		case "esc":
-			m.ui.selected = expensesBox
-			return m, nil
-		}
-
-		// Forward to focused form input
-		in := m.addFormInput()
-		var cmd tea.Cmd
-		*in, cmd = in.Update(msg)
-		// Reset completion flag if user is typing (not Tab or Enter)
-		if msg.String() != "tab" && msg.String() != "enter" && m.form.focused == addFormType {
-			m.form.typeCompleted = false
-		}
-		return m, cmd
+		return m.handleAddBoxKeys(msg)
 	}
-
-	// If overlay is open, only handle overlay-specific keys
 	if m.ui.showOverlay {
-		if isSpace || msg.String() == "esc" {
-			m.ui.showOverlay = false
-			return m, nil
-		}
-		if msg.String() == "ctrl+c" {
-			return m, tea.Quit
-		}
-		// Ignore other keys when overlay is open
-		return m, nil
+		return m.handleOverlayKeys(msg)
 	}
 
-	// Handle space key for overlay toggle
+	key := msg.Key()
+	isSpace := key.Text == " " || key.Code == ' '
 	if isSpace {
 		if m.ui.selected == summaryBox && len(m.data.summary) > 0 {
-			// Ensure we have a valid selected row
 			if m.ui.summaryList.SelectedRow() >= 0 && m.ui.summaryList.SelectedRow() < len(m.data.summary) {
 				m.ui.showOverlay = !m.ui.showOverlay
 			}
@@ -128,20 +66,84 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Expenses and summary box: row navigation
+	return m.handleNavigationKeys(msg)
+}
+
+// handleAddBoxKeys handles form navigation and forwards keys to the focused add-form input.
+// Call only when m.ui.selected == addBox.
+func (m model) handleAddBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "tab":
+		if m.form.typeCompleted {
+			m.addFormFocusNext()
+			return m, nil
+		}
+		if m.hasMatchedSuggestions() {
+			in := m.addFormInput()
+			var cmd tea.Cmd
+			*in, cmd = in.Update(msg)
+			if m.isValueCompleteSuggestion() {
+				m.form.typeCompleted = true
+			}
+			return m, cmd
+		}
+		m.addFormFocusNext()
+		return m, nil
+	case "down":
+		m.addFormFocusNext()
+		return m, nil
+	case "shift+tab", "up":
+		m.addFormFocusPrev()
+		return m, nil
+	case "enter":
+		if cmd := m.addFormSubmit(); cmd != nil {
+			return m, cmd
+		}
+		return m, nil
+	case "esc":
+		m.ui.selected = expensesBox
+		return m, nil
+	}
+
+	in := m.addFormInput()
+	var cmd tea.Cmd
+	*in, cmd = in.Update(msg)
+	if msg.String() != "tab" && msg.String() != "enter" && m.form.focused == addFormType {
+		m.form.typeCompleted = false
+	}
+	return m, cmd
+}
+
+// handleOverlayKeys handles keys when the overlay is open (close, quit, or ignore).
+// Call only when m.ui.showOverlay is true.
+func (m model) handleOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	key := msg.Key()
+	isSpace := key.Text == " " || key.Code == ' '
+	if isSpace || msg.String() == "esc" {
+		m.ui.showOverlay = false
+		return m, nil
+	}
+	if msg.String() == "ctrl+c" {
+		return m, tea.Quit
+	}
+	return m, nil
+}
+
+// handleNavigationKeys handles box selection and row navigation for expenses/summary.
+func (m model) handleNavigationKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
-	case "r": // Refresh data
+	case "r":
 		m.resetRowSelection()
 		return m, loadData(m.db)
-	case "e": // Select expenses box
+	case "e":
 		m.ui.selected = expensesBox
 		return m, nil
-	case "a": // Select add box
+	case "a":
 		m.ui.selected = addBox
 		return m, nil
-	case "s": // Select summary box
+	case "s":
 		m.ui.selected = summaryBox
 		return m, nil
 	case "j", "down":
@@ -155,7 +157,6 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		maxRows := m.calculateMaxVisibleRows()
 		m.moveRowToBottom(maxRows)
 	}
-
 	return m, nil
 }
 
