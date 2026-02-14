@@ -200,8 +200,8 @@ func (m model) renderExpensesBox() string {
 			Header:           m.buildExpensesTableHeader(tableWidth),
 			MaxRows:          maxRows,
 			TotalRows:        len(m.data.expenses),
-			ScrollOffset:     m.ui.expensesScrollOffset,
-			SelectedRowIndex: m.ui.expensesSelectedRow,
+			ScrollOffset:     m.ui.expensesList.ScrollOffset(),
+			SelectedRowIndex: m.ui.expensesList.SelectedRow(),
 			HasFocus:         m.isSelected(expensesBox),
 		}
 		renderRow := func(globalRowIndex int, isSelected bool) string {
@@ -420,8 +420,8 @@ func (m model) renderSummaryBox() string {
 			Header:           m.buildSummaryTableHeader(tableWidth),
 			MaxRows:          maxRows,
 			TotalRows:        len(m.data.summary),
-			ScrollOffset:     m.ui.summaryScrollOffset,
-			SelectedRowIndex: m.ui.summarySelectedRow,
+			ScrollOffset:     m.ui.summaryList.ScrollOffset(),
+			SelectedRowIndex: m.ui.summaryList.SelectedRow(),
 			HasFocus:         m.isSelected(summaryBox),
 			Footer:           footer,
 		}
@@ -545,11 +545,11 @@ func (m model) renderOverlayExpenseRow(expense types.Expense, widths overlayColu
 
 // renderOverlay renders the overlay showing expenses for the selected category
 func (m model) renderOverlay() string {
-	if m.ui.summarySelectedRow < 0 || m.ui.summarySelectedRow >= len(m.data.summary) {
+	if m.ui.summaryList.SelectedRow() < 0 || m.ui.summaryList.SelectedRow() >= len(m.data.summary) {
 		return m.styles.Muted.Render("No category selected")
 	}
 
-	selectedCategory := m.data.summary[m.ui.summarySelectedRow].Category
+	selectedCategory := m.data.summary[m.ui.summaryList.SelectedRow()].Category
 	filteredExpenses := m.filterExpensesByCategory(selectedCategory)
 
 	if len(filteredExpenses) == 0 {

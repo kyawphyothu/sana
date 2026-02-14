@@ -48,11 +48,9 @@ type uiState struct {
 
 	selected selectedBox
 
-	// Row selection and scrolling
-	expensesSelectedRow  int
-	expensesScrollOffset int
-	summarySelectedRow   int
-	summaryScrollOffset  int
+	// Row selection and scrolling (one list per scrollable table)
+	expensesList scrollableList
+	summaryList  scrollableList
 
 	showOverlay bool
 	err         error
@@ -157,11 +155,7 @@ func InitialModel(db *sql.DB) model {
 			summary:  []types.CategorySummary{},
 		},
 		ui: uiState{
-			selected:             expensesBox,
-			expensesSelectedRow:  0,
-			expensesScrollOffset: 0,
-			summarySelectedRow:   0,
-			summaryScrollOffset:  0,
+			selected: expensesBox,
 		},
 		form: addExpenseForm{
 			description: desc,
@@ -208,46 +202,26 @@ func loadData(db *sql.DB) tea.Cmd {
 func (m *model) moveRowUp() {
 	switch m.ui.selected {
 	case expensesBox:
-		if m.ui.expensesSelectedRow > 0 {
-			m.ui.expensesSelectedRow--
-			// Scroll up if needed
-			if m.ui.expensesSelectedRow < m.ui.expensesScrollOffset {
-				m.ui.expensesScrollOffset = m.ui.expensesSelectedRow
-			}
-		}
+		m.ui.expensesList.moveUp()
 	case summaryBox:
-		if m.ui.summarySelectedRow > 0 {
-			m.ui.summarySelectedRow--
-			// Scroll up if needed
-			if m.ui.summarySelectedRow < m.ui.summaryScrollOffset {
-				m.ui.summaryScrollOffset = m.ui.summarySelectedRow
-			}
-		}
+		m.ui.summaryList.moveUp()
 	}
 }
 
 func (m *model) moveRowDown(maxVisibleRows int) {
 	switch m.ui.selected {
 	case expensesBox:
-		maxRow := len(m.data.expenses) - 1
-		if m.ui.expensesSelectedRow < maxRow {
-			m.ui.expensesSelectedRow++
-			m.adjustScrollOffset(maxVisibleRows)
-		}
+		m.ui.expensesList.SetLength(len(m.data.expenses))
+		m.ui.expensesList.moveDown(maxVisibleRows)
 	case summaryBox:
-		maxRow := len(m.data.summary) - 1
-		if m.ui.summarySelectedRow < maxRow {
-			m.ui.summarySelectedRow++
-			m.adjustScrollOffset(maxVisibleRows)
-		}
+		m.ui.summaryList.SetLength(len(m.data.summary))
+		m.ui.summaryList.moveDown(maxVisibleRows)
 	}
 }
 
 func (m *model) resetRowSelection() {
-	m.ui.expensesSelectedRow = 0
-	m.ui.expensesScrollOffset = 0
-	m.ui.summarySelectedRow = 0
-	m.ui.summaryScrollOffset = 0
+	m.ui.expensesList.reset()
+	m.ui.summaryList.reset()
 }
 
 func (m model) isSelected(box selectedBox) bool {
@@ -257,22 +231,20 @@ func (m model) isSelected(box selectedBox) bool {
 func (m *model) moveRowToTop() {
 	switch m.ui.selected {
 	case expensesBox:
-		m.ui.expensesSelectedRow = 0
-		m.ui.expensesScrollOffset = 0
+		m.ui.expensesList.moveToTop()
 	case summaryBox:
-		m.ui.summarySelectedRow = 0
-		m.ui.summaryScrollOffset = 0
+		m.ui.summaryList.moveToTop()
 	}
 }
 
 func (m *model) moveRowToBottom(maxVisibleRows int) {
 	switch m.ui.selected {
 	case expensesBox:
-		m.ui.expensesSelectedRow = len(m.data.expenses) - 1
-		m.adjustScrollOffset(maxVisibleRows)
+		m.ui.expensesList.SetLength(len(m.data.expenses))
+		m.ui.expensesList.moveToBottom(maxVisibleRows)
 	case summaryBox:
-		m.ui.summarySelectedRow = len(m.data.summary) - 1
-		m.adjustScrollOffset(maxVisibleRows)
+		m.ui.summaryList.SetLength(len(m.data.summary))
+		m.ui.summaryList.moveToBottom(maxVisibleRows)
 	}
 }
 
@@ -427,33 +399,3 @@ func updateInputPromptStyle(ti *textinput.Model, isFocused bool, focusedStyle, u
 	ti.SetStyles(styles)
 }
 
-// adjustScrollOffset adjusts the scroll offset to the selected row (ensure row visible)
-func (m *model) adjustScrollOffset(maxVisibleRows int) {
-	switch m.ui.selected {
-	case expensesBox:
-		// Scroll down if needed
-		if m.ui.expensesSelectedRow >= m.ui.expensesScrollOffset+maxVisibleRows {
-			m.ui.expensesScrollOffset = m.ui.expensesSelectedRow - maxVisibleRows + 1
-		}
-		// Ensure we don't scroll past the end
-		maxScrollOffset := len(m.data.expenses) - maxVisibleRows
-		if maxScrollOffset < 0 {
-			maxScrollOffset = 0
-		}
-		if m.ui.expensesScrollOffset > maxScrollOffset {
-			m.ui.expensesScrollOffset = maxScrollOffset
-		}
-	case summaryBox:
-		if m.ui.summarySelectedRow >= m.ui.summaryScrollOffset+maxVisibleRows {
-			m.ui.summaryScrollOffset = m.ui.summarySelectedRow - maxVisibleRows + 1
-		}
-		// Ensure we don't scroll past the end
-		maxScrollOffset := len(m.data.summary) - maxVisibleRows
-		if maxScrollOffset < 0 {
-			maxScrollOffset = 0
-		}
-		if m.ui.summaryScrollOffset > maxScrollOffset {
-			m.ui.summaryScrollOffset = maxScrollOffset
-		}
-	}
-}

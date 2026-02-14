@@ -121,7 +121,7 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if isSpace {
 		if m.ui.selected == summaryBox && len(m.data.summary) > 0 {
 			// Ensure we have a valid selected row
-			if m.ui.summarySelectedRow >= 0 && m.ui.summarySelectedRow < len(m.data.summary) {
+			if m.ui.summaryList.SelectedRow() >= 0 && m.ui.summaryList.SelectedRow() < len(m.data.summary) {
 				m.ui.showOverlay = !m.ui.showOverlay
 			}
 		}
