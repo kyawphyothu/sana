@@ -23,6 +23,15 @@ const (
 	summaryBox
 )
 
+// overlayKind identifies which overlay is currently visible.
+type overlayKind int
+
+const (
+	overlayNone          overlayKind = iota
+	overlayCategoryDetail            // category expense breakdown (from summary box)
+	overlayConfirmDelete             // confirm expense deletion (from expenses box)
+)
+
 // addFormFocus is the index of the focused field in the add-expense form.
 const (
 	addFormType addFormFocus = iota
@@ -52,8 +61,8 @@ type uiState struct {
 	expensesList scrollableList
 	summaryList  scrollableList
 
-	showOverlay bool
-	err         error
+	overlay overlayKind
+	err     error
 }
 
 // addExpenseForm holds the add-expense form inputs and focus state.
@@ -84,6 +93,11 @@ type dataLoadedMsg struct {
 
 // expenseCreatedMsg is sent when an expense is created (success or error).
 type expenseCreatedMsg struct {
+	Err error
+}
+
+// expenseDeletedMsg is sent when an expense is deleted (success or error).
+type expenseDeletedMsg struct {
 	Err error
 }
 
@@ -222,6 +236,24 @@ func (m *model) moveRowDown(maxVisibleRows int) {
 func (m *model) resetRowSelection() {
 	m.ui.expensesList.reset()
 	m.ui.summaryList.reset()
+}
+
+// clampSelections ensures selection indices stay within valid bounds after data changes.
+func (m *model) clampSelections() {
+	if len(m.data.expenses) > 0 {
+		if m.ui.expensesList.SelectedRow() >= len(m.data.expenses) {
+			m.ui.expensesList.selectedRow = len(m.data.expenses) - 1
+		}
+	} else {
+		m.ui.expensesList.reset()
+	}
+	if len(m.data.summary) > 0 {
+		if m.ui.summaryList.SelectedRow() >= len(m.data.summary) {
+			m.ui.summaryList.selectedRow = len(m.data.summary) - 1
+		}
+	} else {
+		m.ui.summaryList.reset()
+	}
 }
 
 func (m model) isSelected(box selectedBox) bool {

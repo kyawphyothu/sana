@@ -36,13 +36,17 @@ const (
 	// Description truncation
 	descTruncateSuffix = 3 // "...".length
 
-	// Overlay dimensions
+	// Overlay dimensions (category detail)
 	overlayMinWidth          = 60
 	overlayMaxWidth          = 100
 	overlaySideMargin        = 20 // margin on each side
 	overlayMinHeight         = 5
 	overlayMaxRows           = 15
 	overlayMinHeightFallback = 7
+
+	// Overlay dimensions (confirm delete)
+	confirmDeleteOverlayWidth  = 50
+	confirmDeleteOverlayHeight = 10
 
 	// Form dimensions
 	formWidth          = 30

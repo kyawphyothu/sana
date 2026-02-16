@@ -2,6 +2,7 @@ package program
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/kyawphyothu/sana/database"
 )
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -19,6 +20,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.data.expenses = msg.Expenses
 		m.data.summary = msg.Summary
 		m.data.total = msg.Total
+		// Clamp selection indices after data reload (e.g. after deletion)
+		m.clampSelections()
 		return m, nil
 
 	case expenseCreatedMsg:
@@ -29,6 +32,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ui.err = nil
 		m.addFormReset()
 		m.ui.selected = expensesBox
+		return m, loadData(m.db)
+
+	case expenseDeletedMsg:
+		if msg.Err != nil {
+			m.ui.err = msg.Err
+			m.ui.overlay = overlayNone
+			return m, nil
+		}
+		m.ui.err = nil
+		m.ui.overlay = overlayNone
 		return m, loadData(m.db)
 
 	case formValidationErrMsg:
@@ -51,7 +64,7 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.ui.selected == addBox {
 		return m.handleAddBoxKeys(msg)
 	}
-	if m.ui.showOverlay {
+	if m.ui.overlay != overlayNone {
 		return m.handleOverlayKeys(msg)
 	}
 
@@ -60,7 +73,7 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if isSpace {
 		if m.ui.selected == summaryBox && len(m.data.summary) > 0 {
 			if m.ui.summaryList.SelectedRow() >= 0 && m.ui.summaryList.SelectedRow() < len(m.data.summary) {
-				m.ui.showOverlay = !m.ui.showOverlay
+				m.ui.overlay = overlayCategoryDetail
 			}
 		}
 		return m, nil
@@ -114,17 +127,45 @@ func (m model) handleAddBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// handleOverlayKeys handles keys when the overlay is open (close, quit, or ignore).
-// Call only when m.ui.showOverlay is true.
+// handleOverlayKeys dispatches key handling to the active overlay.
 func (m model) handleOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch m.ui.overlay {
+	case overlayCategoryDetail:
+		return m.handleCategoryOverlayKeys(msg)
+	case overlayConfirmDelete:
+		return m.handleConfirmDeleteOverlayKeys(msg)
+	}
+	return m, nil
+}
+
+// handleCategoryOverlayKeys handles keys for the category detail overlay.
+func (m model) handleCategoryOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.Key()
 	isSpace := key.Text == " " || key.Code == ' '
 	if isSpace || msg.String() == "esc" {
-		m.ui.showOverlay = false
+		m.ui.overlay = overlayNone
 		return m, nil
 	}
-	if msg.String() == "ctrl+c" {
-		return m, tea.Quit
+	return m, nil
+}
+
+// handleConfirmDeleteOverlayKeys handles keys for the confirm delete overlay.
+func (m model) handleConfirmDeleteOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "d", "enter":
+		selectedIdx := m.ui.expensesList.SelectedRow()
+		if selectedIdx >= 0 && selectedIdx < len(m.data.expenses) {
+			expense := m.data.expenses[selectedIdx]
+			db := m.db
+			return m, func() tea.Msg {
+				return expenseDeletedMsg{Err: database.DeleteExpense(db, expense.ID)}
+			}
+		}
+		m.ui.overlay = overlayNone
+		return m, nil
+	case "esc":
+		m.ui.overlay = overlayNone
+		return m, nil
 	}
 	return m, nil
 }
@@ -156,6 +197,10 @@ func (m model) handleNavigationKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "G", "end":
 		maxRows := m.calculateMaxVisibleRows()
 		m.moveRowToBottom(maxRows)
+	case "d":
+		if m.ui.selected == expensesBox && len(m.data.expenses) > 0 {
+			m.ui.overlay = overlayConfirmDelete
+		}
 	}
 	return m, nil
 }

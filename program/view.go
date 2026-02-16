@@ -116,7 +116,7 @@ func (m model) View() tea.View {
 	)
 
 	// If overlay is visible, layer it on top of main content using Canvas
-	if m.ui.showOverlay {
+	if m.ui.overlay != overlayNone {
 		overlay := m.renderOverlay()
 
 		// Create canvas with layers
@@ -281,8 +281,19 @@ func (m model) renderOverlayExpenseRow(expense types.Expense, widths overlayColu
 	return datePart + spacingStr + descriptionPart + spacingStr + amountPart
 }
 
-// renderOverlay renders the overlay showing expenses for the selected category
+// renderOverlay dispatches to the appropriate overlay renderer based on the active overlay kind.
 func (m model) renderOverlay() string {
+	switch m.ui.overlay {
+	case overlayCategoryDetail:
+		return m.renderCategoryDetailOverlay()
+	case overlayConfirmDelete:
+		return m.renderConfirmDeleteOverlay()
+	}
+	return ""
+}
+
+// renderCategoryDetailOverlay renders the overlay showing expenses for the selected category.
+func (m model) renderCategoryDetailOverlay() string {
 	if m.ui.summaryList.SelectedRow() < 0 || m.ui.summaryList.SelectedRow() >= len(m.data.summary) {
 		return m.styles.Muted.Render("No category selected")
 	}
@@ -341,5 +352,45 @@ func (m model) renderOverlay() string {
 		Title:       selectedCategory,
 		BorderChars: RoundedBorderChars(),
 		Color:       m.styles.Theme.Primary,
+	})
+}
+
+// renderConfirmDeleteOverlay renders the confirmation overlay for deleting an expense.
+func (m model) renderConfirmDeleteOverlay() string {
+	selectedIdx := m.ui.expensesList.SelectedRow()
+	if selectedIdx < 0 || selectedIdx >= len(m.data.expenses) {
+		return m.styles.Muted.Render("No expense selected")
+	}
+
+	expense := m.data.expenses[selectedIdx]
+	localDate := expense.Date.Local()
+	formattedAmount := formatAmountWithCommas(expense.Amount)
+
+	var content strings.Builder
+	content.WriteString(m.styles.Line.Render(fmt.Sprintf("Date:     %s", localDate.Format("2006-01-02 15:04:05"))))
+	content.WriteString("\n")
+	content.WriteString(m.styles.Line.Render(fmt.Sprintf("Type:     %s", expense.Type.String())))
+	content.WriteString("\n")
+	content.WriteString(m.styles.Line.Render(fmt.Sprintf("Amount:   %s", formattedAmount)))
+	content.WriteString("\n")
+	desc := expense.Description
+	if len(desc) > confirmDeleteOverlayWidth-tableBorderPadding-10 {
+		desc = desc[:confirmDeleteOverlayWidth-tableBorderPadding-10-descTruncateSuffix] + "..."
+	}
+	content.WriteString(m.styles.Line.Render(fmt.Sprintf("Desc:     %s", desc)))
+	content.WriteString("\n\n")
+
+	warningStyle := m.styles.Line.Foreground(m.styles.Theme.Error).Bold(true)
+	content.WriteString(warningStyle.Render("Delete this expense?"))
+	content.WriteString("\n\n")
+
+	content.WriteString(m.styles.Muted.Render("d/Enter: delete • Esc: cancel"))
+
+	return m.styles.DrawBorder(content.String(), BorderOptions{
+		Width:       confirmDeleteOverlayWidth,
+		Height:      confirmDeleteOverlayHeight,
+		Title:       "Confirm Delete",
+		BorderChars: RoundedBorderChars(),
+		Color:       m.styles.Theme.Error,
 	})
 }

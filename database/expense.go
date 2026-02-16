@@ -83,3 +83,9 @@ func CreateExpense(db *sql.DB, date time.Time, amount float64, description strin
 	}
 	return res.LastInsertId()
 }
+
+// DeleteExpense removes an expense by ID.
+func DeleteExpense(db *sql.DB, id int64) error {
+	_, err := db.Exec(`DELETE FROM expenses WHERE id = ?`, id)
+	return err
+}
