@@ -248,7 +248,7 @@ func (m model) renderTooSmallMessage() string {
 // iTerm's cursor guide stays on the top row instead of jumping to
 // whichever cells the v2 renderer last updated.
 func (m model) fixedCursor() *tea.Cursor {
-	c := tea.NewCursor(0, m.height)
+	c := tea.NewCursor(0, m.ui.height)
 	c.Blink = false
 	c.Shape = tea.CursorUnderline
 	return c
