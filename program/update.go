@@ -19,6 +19,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.data.expenses = msg.Expenses
 		m.data.summary = msg.Summary
+		m.data.monthlyReport = msg.MonthlyReport
 		m.data.total = msg.Total
 		// Clamp selection indices after data reload (e.g. after deletion)
 		m.clampSelections()
@@ -187,6 +188,9 @@ func (m model) handleNavigationKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "s":
 		m.ui.selected = summaryBox
 		return m, nil
+	case "m":
+		m.ui.selected = monthlyReportBox
+		return m, nil
 	case "j", "down":
 		maxRows := m.calculateMaxVisibleRows()
 		m.moveRowDown(maxRows)
@@ -219,6 +223,9 @@ func (m model) calculateMaxVisibleRows() int {
 	case summaryBox:
 		// Summary box: boxHeight - borders - header - separator - separator - total
 		return boxHeight - summaryBoxRowOffset
+	case monthlyReportBox:
+		// Monthly report box: boxHeight - borders - header - separator
+		return boxHeight - monthlyReportBoxRowOffset
 	}
 	return 1
 }

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/kyawphyothu/sana/database"
 	"github.com/kyawphyothu/sana/types"
@@ -21,15 +21,16 @@ const (
 	expensesBox selectedBox = iota
 	addBox
 	summaryBox
+	monthlyReportBox
 )
 
 // overlayKind identifies which overlay is currently visible.
 type overlayKind int
 
 const (
-	overlayNone          overlayKind = iota
-	overlayCategoryDetail            // category expense breakdown (from summary box)
-	overlayConfirmDelete             // confirm expense deletion (from expenses box)
+	overlayNone           overlayKind = iota
+	overlayCategoryDetail             // category expense breakdown (from summary box)
+	overlayConfirmDelete              // confirm expense deletion (from expenses box)
 )
 
 // addFormFocus is the index of the focused field in the add-expense form.
@@ -45,9 +46,10 @@ type addFormFocus int
 
 // expenseData holds loaded expense data from the database.
 type expenseData struct {
-	expenses []types.Expense
-	summary  []types.CategorySummary
-	total    float64
+	expenses      []types.Expense
+	summary       []types.CategorySummary
+	monthlyReport []types.MonthlyReport
+	total         float64
 }
 
 // uiState holds viewport and UI interaction state.
@@ -58,8 +60,9 @@ type uiState struct {
 	selected selectedBox
 
 	// Row selection and scrolling (one list per scrollable table)
-	expensesList scrollableList
-	summaryList  scrollableList
+	expensesList      scrollableList
+	summaryList       scrollableList
+	monthlyReportList scrollableList
 
 	overlay overlayKind
 	err     error
@@ -85,10 +88,11 @@ type model struct {
 
 // dataLoadedMsg is sent when data loading finishes (in Init).
 type dataLoadedMsg struct {
-	Expenses []types.Expense
-	Summary  []types.CategorySummary
-	Total    float64
-	Err      error
+	Expenses      []types.Expense
+	Summary       []types.CategorySummary
+	MonthlyReport []types.MonthlyReport
+	Total         float64
+	Err           error
 }
 
 // expenseCreatedMsg is sent when an expense is created (success or error).
@@ -163,10 +167,11 @@ func InitialModel(db *sql.DB) model {
 	typ.Focus()
 
 	return model{
-		db:   db,
+		db: db,
 		data: expenseData{
-			expenses: []types.Expense{},
-			summary:  []types.CategorySummary{},
+			expenses:      []types.Expense{},
+			summary:       []types.CategorySummary{},
+			monthlyReport: []types.MonthlyReport{},
 		},
 		ui: uiState{
 			selected: expensesBox,
@@ -199,16 +204,22 @@ func loadData(db *sql.DB) tea.Cmd {
 			return dataLoadedMsg{Err: err}
 		}
 
+		monthlyReport, err := database.GetMonthlyReport(db)
+		if err != nil {
+			return dataLoadedMsg{Err: err}
+		}
+
 		total, err := database.GetTotalExpenses(db)
 		if err != nil {
 			return dataLoadedMsg{Err: err}
 		}
 
 		return dataLoadedMsg{
-			Expenses: expenses,
-			Summary:  summary,
-			Total:    total,
-			Err:      nil,
+			Expenses:      expenses,
+			Summary:       summary,
+			MonthlyReport: monthlyReport,
+			Total:         total,
+			Err:           nil,
 		}
 	}
 }
@@ -219,6 +230,8 @@ func (m *model) moveRowUp() {
 		m.ui.expensesList.moveUp()
 	case summaryBox:
 		m.ui.summaryList.moveUp()
+	case monthlyReportBox:
+		m.ui.monthlyReportList.moveUp()
 	}
 }
 
@@ -230,12 +243,16 @@ func (m *model) moveRowDown(maxVisibleRows int) {
 	case summaryBox:
 		m.ui.summaryList.SetLength(len(m.data.summary))
 		m.ui.summaryList.moveDown(maxVisibleRows)
+	case monthlyReportBox:
+		m.ui.monthlyReportList.SetLength(len(m.data.monthlyReport))
+		m.ui.monthlyReportList.moveDown(maxVisibleRows)
 	}
 }
 
 func (m *model) resetRowSelection() {
 	m.ui.expensesList.reset()
 	m.ui.summaryList.reset()
+	m.ui.monthlyReportList.reset()
 }
 
 // clampSelections ensures selection indices stay within valid bounds after data changes.
@@ -254,6 +271,13 @@ func (m *model) clampSelections() {
 	} else {
 		m.ui.summaryList.reset()
 	}
+	if len(m.data.monthlyReport) > 0 {
+		if m.ui.monthlyReportList.SelectedRow() >= len(m.data.monthlyReport) {
+			m.ui.monthlyReportList.selectedRow = len(m.data.monthlyReport) - 1
+		}
+	} else {
+		m.ui.monthlyReportList.reset()
+	}
 }
 
 func (m model) isSelected(box selectedBox) bool {
@@ -266,6 +290,8 @@ func (m *model) moveRowToTop() {
 		m.ui.expensesList.moveToTop()
 	case summaryBox:
 		m.ui.summaryList.moveToTop()
+	case monthlyReportBox:
+		m.ui.monthlyReportList.moveToTop()
 	}
 }
 
@@ -277,6 +303,9 @@ func (m *model) moveRowToBottom(maxVisibleRows int) {
 	case summaryBox:
 		m.ui.summaryList.SetLength(len(m.data.summary))
 		m.ui.summaryList.moveToBottom(maxVisibleRows)
+	case monthlyReportBox:
+		m.ui.monthlyReportList.SetLength(len(m.data.monthlyReport))
+		m.ui.monthlyReportList.moveToBottom(maxVisibleRows)
 	}
 }
 
@@ -430,4 +459,3 @@ func updateInputPromptStyle(ti *textinput.Model, isFocused bool, focusedStyle, u
 	styles.Blurred.Prompt = unfocusedStyle
 	ti.SetStyles(styles)
 }
-

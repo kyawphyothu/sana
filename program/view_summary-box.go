@@ -7,17 +7,26 @@ import (
 	"github.com/kyawphyothu/sana/types"
 )
 
+// summaryColumnWidths holds column widths for the summary table
+type summaryColumnWidths struct {
+	Category int
+	Count    int
+	Amount   int
+}
+
 // renderSummaryBox creates the summary section grouped by category (third box)
 func (m model) renderSummaryBox() string {
 	expensesHeight := m.calculateExpensesBoxHeight()
 	boxHeight := m.ui.height - titleBoxHeight - expensesHeight
+
+	boxWidth := m.ui.width / 2
 
 	var content strings.Builder
 
 	if len(m.data.expenses) == 0 {
 		content.WriteString(m.styles.Muted.Render("No expenses to summarize"))
 	} else {
-		tableWidth := m.ui.width - tableBorderPadding
+		tableWidth := boxWidth - tableBorderPadding
 		maxRows := boxHeight - summaryBoxHeaderRows
 		if maxRows < 1 {
 			maxRows = 1
@@ -48,7 +57,7 @@ func (m model) renderSummaryBox() string {
 	title := m.formatSummaryTitle(borderColor, isSelected)
 
 	return m.styles.DrawBorder(content.String(), BorderOptions{
-		Width:       m.ui.width,
+		Width:       boxWidth,
 		Height:      boxHeight,
 		Title:       title,
 		BorderChars: RoundedBorderChars(),

@@ -165,3 +165,27 @@ func (m model) formatExpensesAndAddBoxTitle(borderColor color.Color) string {
 
 	return title
 }
+
+// formatSummaryTitle formats the title for the summary box with bold if selected
+func (m model) formatMonthlyReportTitle(isSelected bool) string {
+	// Shortcut key style - stands out
+	shortcutStyle := lipgloss.NewStyle().
+		Foreground(m.styles.Theme.Success).
+		Background(m.styles.Theme.Background)
+
+	var textStyle lipgloss.Style
+	if isSelected {
+		// Selected: bright color + bold for maximum visibility
+		textStyle = lipgloss.NewStyle().
+			Foreground(m.styles.Theme.Selected).
+			Background(m.styles.Theme.Background).
+			Bold(true)
+	} else {
+		// Unselected: muted color for readability without distraction
+		textStyle = lipgloss.NewStyle().
+			Foreground(m.styles.Theme.Muted).
+			Background(m.styles.Theme.Background)
+	}
+
+	return shortcutStyle.Render("[m]") + textStyle.Render("Monthly Report")
+}

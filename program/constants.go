@@ -29,9 +29,10 @@ const (
 	tableBorderPadding = 4
 
 	// Box height calculations
-	expensesBoxHeaderRows = 4 // header + separator + borders
-	summaryBoxHeaderRows  = 6 // header + separator + separator + total + borders
-	overlayHeaderRows     = 6 // header + separator + help + borders
+	expensesBoxHeaderRows      = 4 // header + separator + borders
+	summaryBoxHeaderRows       = 6 // header + separator + separator + total + borders
+	monthlyReportBoxHeaderRows = 4 // header + separator + borders
+	overlayHeaderRows          = 6 // header + separator + help + borders
 
 	// Description truncation
 	descTruncateSuffix = 3 // "...".length
@@ -56,9 +57,10 @@ const (
 	promptOffsetType   = 6
 
 	// Row calculation (for update.go)
-	titleHeightForRows   = 7
-	expensesBoxRowOffset = 4
-	summaryBoxRowOffset  = 6
+	titleHeightForRows        = 7
+	expensesBoxRowOffset      = 4
+	summaryBoxRowOffset       = 6
+	monthlyReportBoxRowOffset = 4
 
 	// Box height division
 	boxHeightDivisor = 2 // Divide remaining height by 2

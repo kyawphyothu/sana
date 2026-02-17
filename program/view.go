@@ -23,13 +23,6 @@ type expenseColumnWidths struct {
 	Amount   int
 }
 
-// summaryColumnWidths holds column widths for the summary table
-type summaryColumnWidths struct {
-	Category int
-	Count    int
-	Amount   int
-}
-
 // overlayColumnWidths holds column widths for the category overlay table
 type overlayColumnWidths struct {
 	Date        int
@@ -108,12 +101,26 @@ func (m model) View() tea.View {
 
 	summaryBox := m.renderSummaryBox()
 
+	expenseBoxrow := lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		expensesBox,
+		summaryBox,
+	)
+	monthlyReportBox := m.renderMonthlyReportBox()
+
+	summaryAndMonthlyReportBox := lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		summaryBox,
+		monthlyReportBox,
+	)
+
 	// Stack vertically
 	mainContent := lipgloss.JoinVertical(
 		lipgloss.Left,
 		titleBox,
-		expensesBox,
-		summaryBox,
+		// expensesBox,
+		expenseBoxrow,
+		summaryAndMonthlyReportBox,
 	)
 
 	// If overlay is visible, layer it on top of main content using Canvas

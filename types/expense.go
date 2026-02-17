@@ -88,3 +88,9 @@ type CategorySummary struct {
 	Count    int
 	Total    float64
 }
+
+// MonthlyReport represents aggregated expense data by month
+type MonthlyReport struct {
+	Month time.Time
+	Total float64
+}

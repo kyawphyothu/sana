@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/kyawphyothu/sana/types"
@@ -63,6 +64,39 @@ func GetExpensesSummary(db *sql.DB) ([]types.CategorySummary, error) {
 		})
 	}
 	return summaries, rows.Err()
+}
+
+// GetMonthlyReport returns expenses grouped by month with totals
+func GetMonthlyReport(db *sql.DB) ([]types.MonthlyReport, error) {
+	rows, err := db.Query(`
+		SELECT strftime('%Y-%m', date) as month, SUM(amount) as total
+		FROM expenses
+		GROUP BY strftime('%Y-%m', date)
+		ORDER BY month DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var monthlyReport []types.MonthlyReport
+	for rows.Next() {
+		var monthStr string
+		var total float64
+		if err := rows.Scan(&monthStr, &total); err != nil {
+			return nil, err
+		}
+		month, err := time.Parse("2006-01", monthStr)
+		if err != nil {
+			return nil, err
+		}
+		monthlyReport = append(monthlyReport, types.MonthlyReport{
+			Month: month,
+			Total: total,
+		})
+	}
+	fmt.Println(monthlyReport)
+	return monthlyReport, rows.Err()
 }
 
 // GetTotalExpenses returns the sum of all expenses
