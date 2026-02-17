@@ -12,6 +12,7 @@ func ListExpenses(db *sql.DB) ([]types.Expense, error) {
 	rows, err := db.Query(`
 		SELECT id, date, amount, description, expense_type, created_at, updated_at
 		FROM expenses
+		WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
 		ORDER BY date DESC, id DESC
 	`)
 	if err != nil {
@@ -37,6 +38,7 @@ func GetExpensesSummary(db *sql.DB) ([]types.CategorySummary, error) {
 	rows, err := db.Query(`
 		SELECT expense_type, SUM(amount) as total, COUNT(*) as count
 		FROM expenses
+		WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
 		GROUP BY expense_type
 		ORDER BY total DESC, count DESC
 	`)
@@ -100,7 +102,7 @@ func GetMonthlyReport(db *sql.DB) ([]types.MonthlyReport, error) {
 // GetTotalExpenses returns the sum of all expenses
 func GetTotalExpenses(db *sql.DB) (float64, error) {
 	var total float64
-	err := db.QueryRow(`SELECT COALESCE(SUM(amount), 0) FROM expenses`).Scan(&total)
+	err := db.QueryRow(`SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')`).Scan(&total)
 	return total, err
 }
 
