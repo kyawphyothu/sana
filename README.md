@@ -52,6 +52,7 @@ sana
 - `a` - Select Add box
 - `s` - Select Summary box
 - `e` - Select Expenses box
+- `m` - Select Monthly Report box
 - `j` / `down` - Move selection down
 - `k` / `up` - Move selection up
 - `g`/ `home` - Move selection to top
