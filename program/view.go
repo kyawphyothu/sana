@@ -39,6 +39,7 @@ func (m model) View() tea.View {
 			m.renderAddBox(),
 		))
 		res.AltScreen = true
+		res.Cursor = m.fixedCursor()
 		return res
 	}
 
@@ -54,6 +55,7 @@ func (m model) View() tea.View {
 		summaryBox,
 	))
 	res.AltScreen = true
+	res.Cursor = m.fixedCursor()
 	return res
 }
 
@@ -400,6 +402,16 @@ func (m model) renderTooSmallMessage() string {
 		Height(m.height).
 		Align(lipgloss.Center, lipgloss.Center).
 		Render(m.styles.Line.Foreground(m.styles.Theme.Error).Render(message))
+}
+
+// fixedCursor returns a non-blinking cursor pinned at (0,0) so that
+// iTerm's cursor guide stays on the top row instead of jumping to
+// whichever cells the v2 renderer last updated.
+func (m model) fixedCursor() *tea.Cursor {
+	c := tea.NewCursor(0, m.height)
+	c.Blink = false
+	c.Shape = tea.CursorUnderline
+	return c
 }
 
 // Helper functions
