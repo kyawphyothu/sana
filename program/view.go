@@ -101,11 +101,6 @@ func (m model) View() tea.View {
 
 	summaryBox := m.renderSummaryBox()
 
-	expenseBoxrow := lipgloss.JoinHorizontal(
-		lipgloss.Left,
-		expensesBox,
-		summaryBox,
-	)
 	monthlyReportBox := m.renderMonthlyReportBox()
 
 	summaryAndMonthlyReportBox := lipgloss.JoinHorizontal(
@@ -118,8 +113,7 @@ func (m model) View() tea.View {
 	mainContent := lipgloss.JoinVertical(
 		lipgloss.Left,
 		titleBox,
-		// expensesBox,
-		expenseBoxrow,
+		expensesBox,
 		summaryAndMonthlyReportBox,
 	)
 
