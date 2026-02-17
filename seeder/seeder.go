@@ -13,6 +13,30 @@ import (
 func main() {
 	expenses := []types.Expense{
 		{
+			Date:        time.Now().AddDate(0, -1, 0),
+			Amount:      100,
+			Description: "Groceries",
+			Type:        types.ExpenseTypeFood,
+		},
+		{
+			Date:        time.Now().AddDate(0, -1, 0),
+			Amount:      100,
+			Description: "Groceries",
+			Type:        types.ExpenseTypeFood,
+		},
+		{
+			Date:        time.Now().AddDate(0, -1, 0),
+			Amount:      100,
+			Description: "Groceries",
+			Type:        types.ExpenseTypeFood,
+		},
+		{
+			Date:        time.Now().AddDate(0, -1, 0),
+			Amount:      100,
+			Description: "Groceries",
+			Type:        types.ExpenseTypeFood,
+		},
+		{
 			Date:        time.Now().UTC(),
 			Amount:      100,
 			Description: "Groceries",
