@@ -285,10 +285,15 @@ func (m model) buildOverlayTableHeader(tableWidth int, widths overlayColumnWidth
 
 // renderOverlayExpenseRow renders a single expense row in the overlay (no selection highlight)
 func (m model) renderOverlayExpenseRow(expense types.Expense, widths overlayColumnWidths) string {
+	desc := expense.Description
+	if len(desc) > widths.Description {
+		desc = desc[:widths.Description-descTruncateSuffix] + "..."
+	}
+
 	localDate := expense.Date.Local()
 	formattedAmount := formatAmountWithCommas(expense.Amount)
 	datePart := m.styles.Line.Width(widths.Date).Align(lipgloss.Left).Render(localDate.Format("2006-01-02"))
-	descriptionPart := m.styles.Line.Width(widths.Description).Align(lipgloss.Left).Render(expense.Description)
+	descriptionPart := m.styles.Line.Width(widths.Description).Align(lipgloss.Left).Render(desc)
 	amountPart := m.styles.Line.Width(widths.Amount).Align(lipgloss.Right).Render(formattedAmount)
 	spacingStr := m.styles.Line.Render("  ")
 	return datePart + spacingStr + descriptionPart + spacingStr + amountPart
@@ -314,12 +319,15 @@ func (m model) renderCategoryDetailOverlay() string {
 	selectedCategory := m.data.summary[m.ui.summaryList.SelectedRow()].Category
 	filteredExpenses := m.filterExpensesByCategory(selectedCategory)
 
+	categoryColor := CategoryColor(selectedCategory)
+	categoryStyle := lipgloss.NewStyle().Foreground(categoryColor).Bold(true).Background(m.styles.Theme.Background)
+
 	if len(filteredExpenses) == 0 {
 		content := fmt.Sprintf("No expenses found for category: %s", selectedCategory)
 		return m.styles.DrawBorder(content, BorderOptions{
 			Width:       overlayMinWidth,
 			Height:      overlayMinHeight,
-			Title:       selectedCategory,
+			Title:       categoryStyle.Render(selectedCategory),
 			BorderChars: RoundedBorderChars(),
 			Color:       m.styles.Theme.Primary,
 		})
@@ -362,7 +370,7 @@ func (m model) renderCategoryDetailOverlay() string {
 	return m.styles.DrawBorder(content.String(), BorderOptions{
 		Width:       overlayWidth,
 		Height:      overlayHeight,
-		Title:       selectedCategory,
+		Title:       categoryStyle.Render(selectedCategory),
 		BorderChars: RoundedBorderChars(),
 		Color:       m.styles.Theme.Primary,
 	})
