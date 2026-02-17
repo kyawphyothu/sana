@@ -22,8 +22,7 @@ func (m model) renderMonthlyReportBox() string {
 
 	var content strings.Builder
 
-	// if len(m.data.monthlyReport) == 0 {
-	if false {
+	if len(m.data.monthlyReport) == 0 {
 		content.WriteString(m.styles.Muted.Render("No monthly report data"))
 	} else {
 		tableWidth := boxWidth - tableBorderPadding
