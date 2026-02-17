@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/kyawphyothu/sana/types"
@@ -95,7 +94,6 @@ func GetMonthlyReport(db *sql.DB) ([]types.MonthlyReport, error) {
 			Total: total,
 		})
 	}
-	fmt.Println(monthlyReport)
 	return monthlyReport, rows.Err()
 }
 
