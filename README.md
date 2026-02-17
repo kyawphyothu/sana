@@ -33,6 +33,10 @@ sana
 
 ## Keybindings
 
+### Expenses box
+
+- `d` - Delete expense
+
 ### Add box
 
 - `tab` - Autocomplete suggestion or move to next field
