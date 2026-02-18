@@ -12,16 +12,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ui.height = msg.Height
 		return m, nil
 
-	case dataLoadedMsg:
+	case monthDataLoadedMsg:
 		if msg.Err != nil {
 			m.ui.err = msg.Err
 			return m, nil
 		}
 		m.data.expenses = msg.Expenses
 		m.data.summary = msg.Summary
-		m.data.monthlyReport = msg.MonthlyReport
 		m.data.total = msg.Total
-		// Clamp selection indices after data reload (e.g. after deletion)
+		m.clampSelections()
+		return m, nil
+
+	case monthlyReportLoadedMsg:
+		if msg.Err != nil {
+			m.ui.err = msg.Err
+			return m, nil
+		}
+		m.data.monthlyReport = msg.MonthlyReport
 		m.clampSelections()
 		return m, nil
 
@@ -33,7 +40,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ui.err = nil
 		m.addFormReset()
 		m.ui.selected = expensesBox
-		return m, loadData(m.db)
+		return m, tea.Batch(loadMonthData(m.db, m.ui.activeMonth), loadMonthlyReportData(m.db))
 
 	case expenseDeletedMsg:
 		if msg.Err != nil {
@@ -43,7 +50,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.ui.err = nil
 		m.ui.overlay = overlayNone
-		return m, loadData(m.db)
+		return m, tea.Batch(loadMonthData(m.db, m.ui.activeMonth), loadMonthlyReportData(m.db))
 
 	case formValidationErrMsg:
 		m.ui.err = msg.Err
@@ -58,12 +65,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c":
+	case "ctrl+c", "q":
 		return m, tea.Quit
 	}
 
 	if m.ui.selected == addBox {
 		return m.handleAddBoxKeys(msg)
+	}
+	if m.ui.selected == monthlyReportBox {
+		return m.handleMonthlyReportBoxKeys(msg)
 	}
 	if m.ui.overlay != overlayNone {
 		return m.handleOverlayKeys(msg)
@@ -128,6 +138,19 @@ func (m model) handleAddBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m model) handleMonthlyReportBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		selectedIdx := m.ui.monthlyReportList.SelectedRow()
+		if selectedIdx >= 0 && selectedIdx < len(m.data.monthlyReport) {
+			m.ui.activeMonth = m.data.monthlyReport[selectedIdx].Month
+			return m, loadMonthData(m.db, m.ui.activeMonth)
+		}
+		return m, nil
+	}
+	return m.handleNavigationKeys(msg)
+}
+
 // handleOverlayKeys dispatches key handling to the active overlay.
 func (m model) handleOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.ui.overlay {
@@ -178,7 +201,7 @@ func (m model) handleNavigationKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "r":
 		m.resetRowSelection()
-		return m, loadData(m.db)
+		return m, loadMonthData(m.db, m.ui.activeMonth)
 	case "e":
 		m.ui.selected = expensesBox
 		return m, nil

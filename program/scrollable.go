@@ -6,7 +6,7 @@ package program
 type scrollableList struct {
 	selectedRow  int
 	scrollOffset int
-	items        []interface{}
+	length       int
 }
 
 // SetLength sets the number of items in the list (e.g. before navigation).
@@ -15,16 +15,12 @@ func (s *scrollableList) SetLength(n int) {
 	if n < 0 {
 		n = 0
 	}
-	if cap(s.items) >= n {
-		s.items = s.items[:n]
-	} else {
-		s.items = make([]interface{}, n)
-	}
+	s.length = n
 }
 
 // Len returns the number of items in the list.
 func (s *scrollableList) Len() int {
-	return len(s.items)
+	return s.length
 }
 
 // SelectedRow returns the currently selected row index.

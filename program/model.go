@@ -64,6 +64,8 @@ type uiState struct {
 	summaryList       scrollableList
 	monthlyReportList scrollableList
 
+	activeMonth time.Time
+
 	overlay overlayKind
 	err     error
 }
@@ -86,12 +88,17 @@ type model struct {
 	styles Styles
 }
 
-// dataLoadedMsg is sent when data loading finishes (in Init).
-type dataLoadedMsg struct {
-	Expenses      []types.Expense
-	Summary       []types.CategorySummary
+// monthDataLoadedMsg is sent when month-specific data loading finishes.
+type monthDataLoadedMsg struct {
+	Expenses []types.Expense
+	Summary  []types.CategorySummary
+	Total    float64
+	Err      error
+}
+
+// monthlyReportLoadedMsg is sent when the monthly report (all months) loading finishes.
+type monthlyReportLoadedMsg struct {
 	MonthlyReport []types.MonthlyReport
-	Total         float64
 	Err           error
 }
 
@@ -174,7 +181,8 @@ func InitialModel(db *sql.DB) model {
 			monthlyReport: []types.MonthlyReport{},
 		},
 		ui: uiState{
-			selected: expensesBox,
+			selected:    expensesBox,
+			activeMonth: time.Now(),
 		},
 		form: addExpenseForm{
 			description: desc,
@@ -188,39 +196,46 @@ func InitialModel(db *sql.DB) model {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(loadData(m.db), blinkCmd())
+	return tea.Batch(loadMonthData(m.db, time.Time{}), loadMonthlyReportData(m.db), blinkCmd())
 }
 
-// loadData returns a command that loads expenses, summary, and total from the database
-func loadData(db *sql.DB) tea.Cmd {
+// loadMonthData returns a command that loads expenses, summary, and total for a specific month.
+func loadMonthData(db *sql.DB, date time.Time) tea.Cmd {
+	if date.IsZero() {
+		date = time.Now()
+	}
 	return func() tea.Msg {
-		expenses, err := database.ListExpenses(db)
+		expenses, err := database.ListExpenses(db, date)
 		if err != nil {
-			return dataLoadedMsg{Err: err}
+			return monthDataLoadedMsg{Err: err}
 		}
 
-		summary, err := database.GetExpensesSummary(db)
+		summary, err := database.GetExpensesSummary(db, date)
 		if err != nil {
-			return dataLoadedMsg{Err: err}
+			return monthDataLoadedMsg{Err: err}
 		}
 
+		total, err := database.GetTotalExpenses(db, date)
+		if err != nil {
+			return monthDataLoadedMsg{Err: err}
+		}
+
+		return monthDataLoadedMsg{
+			Expenses: expenses,
+			Summary:  summary,
+			Total:    total,
+		}
+	}
+}
+
+// loadMonthlyReportData returns a command that loads the monthly report (all months).
+func loadMonthlyReportData(db *sql.DB) tea.Cmd {
+	return func() tea.Msg {
 		monthlyReport, err := database.GetMonthlyReport(db)
 		if err != nil {
-			return dataLoadedMsg{Err: err}
+			return monthlyReportLoadedMsg{Err: err}
 		}
-
-		total, err := database.GetTotalExpenses(db)
-		if err != nil {
-			return dataLoadedMsg{Err: err}
-		}
-
-		return dataLoadedMsg{
-			Expenses:      expenses,
-			Summary:       summary,
-			MonthlyReport: monthlyReport,
-			Total:         total,
-			Err:           nil,
-		}
+		return monthlyReportLoadedMsg{MonthlyReport: monthlyReport}
 	}
 }
 

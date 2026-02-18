@@ -3,6 +3,7 @@ package program
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kyawphyothu/sana/types"
 )
@@ -13,7 +14,7 @@ type monthlyReportColumnWidths struct {
 	Amount int
 }
 
-// renderSummaryBox creates the summary section grouped by category (third box)
+// renderMonthlyReportBox creates the monthly report section (third box)
 func (m model) renderMonthlyReportBox() string {
 	expensesHeight := m.calculateExpensesBoxHeight()
 	boxHeight := m.ui.height - titleBoxHeight - expensesHeight
@@ -62,7 +63,7 @@ func (m model) renderMonthlyReportBox() string {
 	})
 }
 
-// buildSummaryTableHeader returns the table header and separator for the summary box
+// buildMonthlyReportTableHeader returns the table header and separator for the monthly report box
 func (m model) buildMonthlyReportTableHeader(tableWidth int) string {
 	widths := m.calculateMonthlyReportColumnWidths(tableWidth)
 	header := fmt.Sprintf("%-*s  %*s", widths.Month, "Month", widths.Amount, "Total")
@@ -73,16 +74,29 @@ func (m model) buildMonthlyReportTableHeader(tableWidth int) string {
 // renderMonthlyReportRow renders a single monthly report row (month, total)
 func (m model) renderMonthlyReportRow(report types.MonthlyReport, widths monthlyReportColumnWidths, isSelected bool) string {
 	formattedAmount := formatAmountWithCommas(report.Total)
+	starPart := " "
+	starStyle := m.styles.Line
+	if sameMonth(report.Month, m.ui.activeMonth) {
+		starPart = starStyle.Foreground(m.styles.Theme.Success).Render("*")
+	} else {
+		starPart = starStyle.Render(" ")
+	}
 	line := fmt.Sprintf("%-*s  %*s", widths.Month, report.Month.Format("2006-01"), widths.Amount, formattedAmount)
 	if isSelected {
-		return m.styles.Selected.Render(line)
+		return starPart + m.styles.Selected.Render(line)
 	}
-	return m.styles.Line.Render(line)
+	return starPart + m.styles.Line.Render(line)
 }
 
 // calculateMonthlyReportColumnWidths computes column widths for the monthly report table
 func (m model) calculateMonthlyReportColumnWidths(tableWidth int) monthlyReportColumnWidths {
+	starWidth := 1
 	monthWidth := 10
-	amountWidth := tableWidth - monthWidth - tableColumnSpacing
+	amountWidth := tableWidth - starWidth - monthWidth - tableColumnSpacing
 	return monthlyReportColumnWidths{Month: monthWidth, Amount: amountWidth}
+}
+
+// sameMonth checks if two months are the same
+func sameMonth(a, b time.Time) bool {
+	return a.Month() == b.Month() && a.Year() == b.Year()
 }

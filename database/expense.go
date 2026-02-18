@@ -8,13 +8,14 @@ import (
 )
 
 // ListExpenses returns all expenses from the database, ordered by date descending.
-func ListExpenses(db *sql.DB) ([]types.Expense, error) {
+func ListExpenses(db *sql.DB, date time.Time) ([]types.Expense, error) {
+	dateStr := date.Format("2006-01-02")
 	rows, err := db.Query(`
 		SELECT id, date, amount, description, expense_type, created_at, updated_at
 		FROM expenses
-		WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
+		WHERE strftime('%Y-%m', date) = strftime('%Y-%m', ?)
 		ORDER BY date DESC, id DESC
-	`)
+	`, dateStr)
 	if err != nil {
 		return nil, err
 	}
@@ -34,14 +35,15 @@ func ListExpenses(db *sql.DB) ([]types.Expense, error) {
 }
 
 // GetExpensesSummary returns expenses grouped by category with totals, ordered alphabetically
-func GetExpensesSummary(db *sql.DB) ([]types.CategorySummary, error) {
+func GetExpensesSummary(db *sql.DB, date time.Time) ([]types.CategorySummary, error) {
+	dateStr := date.Format("2006-01-02")
 	rows, err := db.Query(`
 		SELECT expense_type, SUM(amount) as total, COUNT(*) as count
 		FROM expenses
-		WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
+		WHERE strftime('%Y-%m', date) = strftime('%Y-%m', ?)
 		GROUP BY expense_type
 		ORDER BY total DESC, count DESC
-	`)
+	`, dateStr)
 	if err != nil {
 		return nil, err
 	}
@@ -100,9 +102,10 @@ func GetMonthlyReport(db *sql.DB) ([]types.MonthlyReport, error) {
 }
 
 // GetTotalExpenses returns the sum of all expenses
-func GetTotalExpenses(db *sql.DB) (float64, error) {
+func GetTotalExpenses(db *sql.DB, date time.Time) (float64, error) {
+	dateStr := date.Format("2006-01-02")
 	var total float64
-	err := db.QueryRow(`SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')`).Scan(&total)
+	err := db.QueryRow(`SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE strftime('%Y-%m', date) = strftime('%Y-%m', ?)`, dateStr).Scan(&total)
 	return total, err
 }
 
