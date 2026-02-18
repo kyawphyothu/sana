@@ -47,7 +47,7 @@ const (
 
 	// Overlay dimensions (confirm delete)
 	confirmDeleteOverlayWidth  = 50
-	confirmDeleteOverlayHeight = 10
+	confirmDeleteOverlayHeight = 11
 
 	// Form dimensions
 	formWidth          = 30

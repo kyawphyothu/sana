@@ -405,6 +405,11 @@ func (m model) renderConfirmDeleteOverlay() string {
 	content.WriteString(warningStyle.Render("Delete this expense?"))
 	content.WriteString("\n\n")
 
+	if m.ui.err != nil {
+		content.WriteString(m.styles.Line.Foreground(m.styles.Theme.Error).Render("Error: " + m.ui.err.Error()))
+		content.WriteString("\n")
+	}
+
 	content.WriteString(m.styles.Muted.Render("d/Enter: delete • Esc: cancel"))
 
 	return m.styles.DrawBorder(content.String(), BorderOptions{

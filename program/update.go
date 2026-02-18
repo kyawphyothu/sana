@@ -17,6 +17,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ui.err = msg.Err
 			return m, nil
 		}
+		m.ui.err = nil
 		m.data.expenses = msg.Expenses
 		m.data.summary = msg.Summary
 		m.data.total = msg.Total
@@ -28,6 +29,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ui.err = msg.Err
 			return m, nil
 		}
+		m.ui.err = nil
 		m.data.monthlyReport = msg.MonthlyReport
 		m.clampSelections()
 		return m, nil
@@ -40,17 +42,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ui.err = nil
 		m.addFormReset()
 		m.ui.selected = expensesBox
-		return m, tea.Batch(loadMonthData(m.db, m.ui.activeMonth), loadMonthlyReportData(m.db))
+		return m, m.reloadAllData()
 
 	case expenseDeletedMsg:
 		if msg.Err != nil {
 			m.ui.err = msg.Err
-			m.ui.overlay = overlayNone
+			m.ui.overlay = overlayConfirmDelete
 			return m, nil
 		}
 		m.ui.err = nil
 		m.ui.overlay = overlayNone
-		return m, tea.Batch(loadMonthData(m.db, m.ui.activeMonth), loadMonthlyReportData(m.db))
+		return m, m.reloadAllData()
 
 	case formValidationErrMsg:
 		m.ui.err = msg.Err
@@ -65,13 +67,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c", "q":
+	case "ctrl+c":
 		return m, tea.Quit
 	}
 
 	if m.ui.selected == addBox {
 		return m.handleAddBoxKeys(msg)
 	}
+
+	switch msg.String() {
+	case "q":
+		return m, tea.Quit
+	}
+
 	if m.ui.selected == monthlyReportBox {
 		return m.handleMonthlyReportBoxKeys(msg)
 	}
@@ -125,6 +133,7 @@ func (m model) handleAddBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "esc":
+		m.ui.err = nil
 		m.ui.selected = expensesBox
 		return m, nil
 	}
@@ -132,7 +141,7 @@ func (m model) handleAddBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	in := m.addFormInput()
 	var cmd tea.Cmd
 	*in, cmd = in.Update(msg)
-	if msg.String() != "tab" && msg.String() != "enter" && m.form.focused == addFormType {
+	if m.form.focused == addFormType {
 		m.form.typeCompleted = false
 	}
 	return m, cmd
@@ -188,6 +197,7 @@ func (m model) handleConfirmDeleteOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cm
 		m.ui.overlay = overlayNone
 		return m, nil
 	case "esc":
+		m.ui.err = nil
 		m.ui.overlay = overlayNone
 		return m, nil
 	}
@@ -197,8 +207,6 @@ func (m model) handleConfirmDeleteOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cm
 // handleNavigationKeys handles box selection and row navigation for expenses/summary.
 func (m model) handleNavigationKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q":
-		return m, tea.Quit
 	case "r":
 		m.resetRowSelection()
 		return m, loadMonthData(m.db, m.ui.activeMonth)
@@ -251,4 +259,9 @@ func (m model) calculateMaxVisibleRows() int {
 		return boxHeight - monthlyReportBoxRowOffset
 	}
 	return 1
+}
+
+// reloadAllData reloads all data for the current month and monthly report
+func (m model) reloadAllData() tea.Cmd {
+	return tea.Batch(loadMonthData(m.db, m.ui.activeMonth), loadMonthlyReportData(m.db))
 }

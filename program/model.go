@@ -117,16 +117,6 @@ type formValidationErrMsg struct {
 	Err error
 }
 
-// blinkMsg is sent periodically to trigger cursor blinking in text inputs.
-type blinkMsg struct{}
-
-// blinkCmd returns a command that sends a blinkMsg after the blink interval.
-func blinkCmd() tea.Cmd {
-	return tea.Tick(500*time.Millisecond, func(time.Time) tea.Msg {
-		return blinkMsg{}
-	})
-}
-
 func newAddFormInput(placeholder string, width int) textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
@@ -196,7 +186,7 @@ func InitialModel(db *sql.DB) model {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(loadMonthData(m.db, time.Time{}), loadMonthlyReportData(m.db), blinkCmd())
+	return tea.Batch(loadMonthData(m.db, time.Time{}), loadMonthlyReportData(m.db))
 }
 
 // loadMonthData returns a command that loads expenses, summary, and total for a specific month.
