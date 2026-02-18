@@ -8,7 +8,7 @@ A simple terminal-based expense tracker built with Go.
 
 - Track expenses with date, description, category, and amount
 - View expense summary by category
-- Terminal user interface (TUI)
+- View monthly report of expenses
 
 ## Usage
 
@@ -50,6 +50,10 @@ sana
 
 - `space` - Toggle overlay
 - `esc` - Close overlay
+
+### Monthly Report box
+
+- `enter` - Select month
 
 ### Global keybindings
 
