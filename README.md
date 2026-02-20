@@ -67,3 +67,4 @@ sana
 - `G`/ `end` - Move selection to bottom
 - `r` - Refresh data
 - `q` / `ctrl+c` - Quit
+- `?` - Show help menu
