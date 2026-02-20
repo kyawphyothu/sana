@@ -41,6 +41,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.ui.err = nil
 		m.addFormReset()
+		m.ui.previousSelected = m.ui.selected
 		m.ui.selected = expensesBox
 		return m, m.reloadAllData()
 
@@ -51,6 +52,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.ui.err = nil
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = expensesBox
 		m.ui.overlay = overlayNone
 		return m, m.reloadAllData()
 
@@ -74,31 +77,65 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.ui.selected == addBox {
 		return m.handleAddBoxKeys(msg)
 	}
-
-	switch msg.String() {
-	case "q":
-		return m, tea.Quit
+	if m.ui.selected == expensesBox {
+		return m.handleExpensesBoxKeys(msg)
 	}
-
 	if m.ui.selected == monthlyReportBox {
 		return m.handleMonthlyReportBoxKeys(msg)
+	}
+	if m.ui.selected == summaryBox {
+		return m.handleSummaryBoxKeys(msg)
 	}
 	if m.ui.overlay != overlayNone {
 		return m.handleOverlayKeys(msg)
 	}
 
-	key := msg.Key()
-	isSpace := key.Text == " " || key.Code == ' '
-	if isSpace {
-		if m.ui.selected == summaryBox && len(m.data.summary) > 0 {
-			if m.ui.summaryList.SelectedRow() >= 0 && m.ui.summaryList.SelectedRow() < len(m.data.summary) {
-				m.ui.overlay = overlayCategoryDetail
-			}
-		}
+	return m, nil
+}
+
+// handleExpensesBoxKeys handles keys for the expenses box.
+func (m model) handleExpensesBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "d":
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = confirmDeleteOverlay
+		m.ui.overlay = overlayConfirmDelete
+		return m, nil
+	case "?":
+		return m.help()
+	case "q":
+		return m, tea.Quit
+	case "r":
+		m.resetRowSelection()
+		return m, loadMonthData(m.db, m.ui.activeMonth)
+	case "a":
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = addBox
+		return m, nil
+	case "s":
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = summaryBox
+		return m, nil
+	case "m":
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = monthlyReportBox
+		return m, nil
+	case "j", "down":
+		maxRows := m.calculateMaxVisibleRows()
+		m.moveRowDown(maxRows)
+		return m, nil
+	case "k", "up":
+		m.moveRowUp()
+		return m, nil
+	case "g", "home":
+		m.moveRowToTop()
+		return m, nil
+	case "G", "end":
+		maxRows := m.calculateMaxVisibleRows()
+		m.moveRowToBottom(maxRows)
 		return m, nil
 	}
-
-	return m.handleNavigationKeys(msg)
+	return m, nil
 }
 
 // handleAddBoxKeys handles form navigation and forwards keys to the focused add-form input.
@@ -133,8 +170,8 @@ func (m model) handleAddBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "esc":
+		m.ui.selected = m.ui.previousSelected
 		m.ui.err = nil
-		m.ui.selected = expensesBox
 		return m, nil
 	}
 
@@ -147,6 +184,54 @@ func (m model) handleAddBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// handleSummaryBoxKeys handles keys for the summary box.
+func (m model) handleSummaryBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "space":
+		if m.ui.summaryList.SelectedRow() >= 0 && m.ui.summaryList.SelectedRow() < len(m.data.summary) {
+			m.ui.selected = categoryDetailOverlay
+			m.ui.overlay = overlayCategoryDetail
+		}
+		return m, nil
+	case "?":
+		return m.help()
+	case "q":
+		return m, tea.Quit
+	case "r":
+		m.resetRowSelection()
+		return m, loadMonthData(m.db, m.ui.activeMonth)
+	case "a":
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = addBox
+		return m, nil
+	case "e":
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = expensesBox
+		return m, nil
+	case "m":
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = monthlyReportBox
+		return m, nil
+	case "j", "down":
+		maxRows := m.calculateMaxVisibleRows()
+		m.moveRowDown(maxRows)
+		return m, nil
+	case "k", "up":
+		m.moveRowUp()
+		return m, nil
+	case "g", "home":
+		m.moveRowToTop()
+		return m, nil
+	case "G", "end":
+		maxRows := m.calculateMaxVisibleRows()
+		m.moveRowToBottom(maxRows)
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// handleMonthlyReportBoxKeys handles keys for the monthly report box.
 func (m model) handleMonthlyReportBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
@@ -156,8 +241,42 @@ func (m model) handleMonthlyReportBoxKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, loadMonthData(m.db, m.ui.activeMonth)
 		}
 		return m, nil
+	case "?":
+		return m.help()
+	case "q":
+		return m, tea.Quit
+	case "r":
+		m.resetRowSelection()
+		return m, loadMonthData(m.db, m.ui.activeMonth)
+	case "a":
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = addBox
+		return m, nil
+	case "e":
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = expensesBox
+		return m, nil
+	case "s":
+		m.ui.previousSelected = m.ui.selected
+		m.ui.selected = summaryBox
+		return m, nil
+	case "j", "down":
+		maxRows := m.calculateMaxVisibleRows()
+		m.moveRowDown(maxRows)
+		return m, nil
+	case "k", "up":
+		m.moveRowUp()
+		return m, nil
+	case "g", "home":
+		m.moveRowToTop()
+		return m, nil
+	case "G", "end":
+		maxRows := m.calculateMaxVisibleRows()
+		m.moveRowToBottom(maxRows)
+		return m, nil
 	}
-	return m.handleNavigationKeys(msg)
+
+	return m, nil
 }
 
 // handleOverlayKeys dispatches key handling to the active overlay.
@@ -167,16 +286,23 @@ func (m model) handleOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleCategoryOverlayKeys(msg)
 	case overlayConfirmDelete:
 		return m.handleConfirmDeleteOverlayKeys(msg)
+	case overlayHelp:
+		return m.handleHelpOverlayKeys(msg)
 	}
 	return m, nil
 }
 
 // handleCategoryOverlayKeys handles keys for the category detail overlay.
 func (m model) handleCategoryOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	key := msg.Key()
-	isSpace := key.Text == " " || key.Code == ' '
-	if isSpace || msg.String() == "esc" {
+	switch msg.String() {
+	case "space":
 		m.ui.overlay = overlayNone
+		m.ui.selected = summaryBox
+		return m, nil
+	case "esc":
+		m.ui.selected = summaryBox
+		m.ui.overlay = overlayNone
+		m.ui.err = nil
 		return m, nil
 	}
 	return m, nil
@@ -194,48 +320,27 @@ func (m model) handleConfirmDeleteOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cm
 				return expenseDeletedMsg{Err: database.DeleteExpense(db, expense.ID)}
 			}
 		}
+		m.ui.selected = expensesBox
 		m.ui.overlay = overlayNone
 		return m, nil
 	case "esc":
-		m.ui.err = nil
+		m.ui.selected = expensesBox
 		m.ui.overlay = overlayNone
+		m.ui.err = nil
 		return m, nil
 	}
 	return m, nil
 }
 
-// handleNavigationKeys handles box selection and row navigation for expenses/summary.
-func (m model) handleNavigationKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+// handleHelpOverlayKeys handles keys for the help overlay.
+func (m model) handleHelpOverlayKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "r":
-		m.resetRowSelection()
-		return m, loadMonthData(m.db, m.ui.activeMonth)
-	case "e":
-		m.ui.selected = expensesBox
+	case "esc", "?":
+		m.ui.selected = m.ui.previousSelected
+		m.ui.overlay = overlayNone
 		return m, nil
-	case "a":
-		m.ui.selected = addBox
-		return m, nil
-	case "s":
-		m.ui.selected = summaryBox
-		return m, nil
-	case "m":
-		m.ui.selected = monthlyReportBox
-		return m, nil
-	case "j", "down":
-		maxRows := m.calculateMaxVisibleRows()
-		m.moveRowDown(maxRows)
-	case "k", "up":
-		m.moveRowUp()
-	case "g", "home":
-		m.moveRowToTop()
-	case "G", "end":
-		maxRows := m.calculateMaxVisibleRows()
-		m.moveRowToBottom(maxRows)
-	case "d":
-		if m.ui.selected == expensesBox && len(m.data.expenses) > 0 {
-			m.ui.overlay = overlayConfirmDelete
-		}
+	case "q":
+		return m, tea.Quit
 	}
 	return m, nil
 }

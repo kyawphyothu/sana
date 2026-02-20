@@ -22,6 +22,9 @@ const (
 	addBox
 	summaryBox
 	monthlyReportBox
+	categoryDetailOverlay
+	confirmDeleteOverlay
+	helpOverlay
 )
 
 // overlayKind identifies which overlay is currently visible.
@@ -31,6 +34,7 @@ const (
 	overlayNone           overlayKind = iota
 	overlayCategoryDetail             // category expense breakdown (from summary box)
 	overlayConfirmDelete              // confirm expense deletion (from expenses box)
+	overlayHelp                       // help overlay (from expenses box)
 )
 
 // addFormFocus is the index of the focused field in the add-expense form.
@@ -57,7 +61,8 @@ type uiState struct {
 	width  int
 	height int
 
-	selected selectedBox
+	selected         selectedBox
+	previousSelected selectedBox
 
 	// Row selection and scrolling (one list per scrollable table)
 	expensesList      scrollableList

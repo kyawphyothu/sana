@@ -306,6 +306,8 @@ func (m model) renderOverlay() string {
 		return m.renderCategoryDetailOverlay()
 	case overlayConfirmDelete:
 		return m.renderConfirmDeleteOverlay()
+	case overlayHelp:
+		return m.renderHelpOverlay()
 	}
 	return ""
 }
@@ -421,5 +423,74 @@ func (m model) renderConfirmDeleteOverlay() string {
 		Title:       "Confirm Delete",
 		BorderChars: RoundedBorderChars(),
 		Color:       m.styles.Theme.Error,
+	})
+}
+
+// renderHelpOverlay renders the help overlay for the expenses box.
+func (m model) renderHelpOverlay() string {
+	lengthOfKey := 8
+	var content strings.Builder
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("? " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Help Menu"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("q " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Quit"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("r " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Reload"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("a " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Add Expense"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("e " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Expense"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("d " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Delete Expense"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("s " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Summary"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("<space> " + strings.Repeat(" ", lengthOfKey-7)))
+	content.WriteString(m.styles.Muted.Render("Category Detail"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("m " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Monthly Report"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("<enter> " + strings.Repeat(" ", lengthOfKey-7)))
+	content.WriteString(m.styles.Muted.Render("Select Month"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("j " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Move Down"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("k " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Move Up"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("g " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Move to Top"))
+	content.WriteString("\n")
+
+	content.WriteString(m.styles.Base.Foreground(m.styles.Theme.Primary).Bold(true).Render("G " + strings.Repeat(" ", lengthOfKey-1)))
+	content.WriteString(m.styles.Muted.Render("Move to Bottom"))
+	content.WriteString("\n")
+
+	return m.styles.DrawBorder(content.String(), BorderOptions{
+		Width:       overlayMinWidth,
+		Height:      15,
+		Title:       m.styles.Base.Foreground(m.styles.Theme.Selected).Bold(true).Render("Help"),
+		BorderChars: RoundedBorderChars(),
+		Color:       m.styles.Theme.Primary,
 	})
 }
