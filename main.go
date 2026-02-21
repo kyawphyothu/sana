@@ -8,9 +8,14 @@ import (
 	"github.com/kyawphyothu/sana/config"
 	"github.com/kyawphyothu/sana/database"
 	"github.com/kyawphyothu/sana/program"
+	"github.com/mattn/go-isatty"
 )
 
 func main() {
+	// Force true color when attached to a TTY (e.g. Docker + iTerm2) so hex colors
+	if isatty.IsTerminal(os.Stdout.Fd()) && os.Getenv("COLORTERM") == "" {
+		os.Setenv("COLORTERM", "truecolor")
+	}
 	config, err := config.LoadConfig()
 	if err != nil {
 		fmt.Println("Error loading config:", err)
