@@ -4,7 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/kyawphyothu/sana/config"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 func NewDB(config *config.Config) (*sql.DB, error) {

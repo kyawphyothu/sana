@@ -15,7 +15,7 @@ type Config struct {
 
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
-		DBType: "sqlite3",
+		DBType: "sqlite",
 		DBName: dbFileName,
 		DBPath: getDBPath(),
 	}
