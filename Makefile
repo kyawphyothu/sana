@@ -65,7 +65,7 @@ seed: ## Seed the database
 
 .PHONY: test
 test: ## Run tests
-	$(GO) test -v ./...
+	$(GO) test -v -count=1 ./...
 
 .PHONY: fmt
 fmt: ## Format code
