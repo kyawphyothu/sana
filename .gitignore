@@ -6,3 +6,5 @@ sana
 ./bin
 # Added by goreleaser init:
 dist/
+
+.env

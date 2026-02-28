@@ -83,13 +83,9 @@ all: clean deps check build ## Clean, download deps, check, and build
 
 .PHONY: release
 release: ## Build for multiple platforms
-	@echo "Building releases..."
-	@mkdir -p $(BUILD_DIR)/releases
-	GOOS=darwin GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/releases/$(BINARY_NAME)-darwin-amd64 $(MAIN_PATH)
-	GOOS=darwin GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/releases/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
-	GOOS=linux GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/releases/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
-	GOOS=linux GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/releases/$(BINARY_NAME)-linux-arm64 $(MAIN_PATH)
-	GOOS=windows GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/releases/$(BINARY_NAME)-windows-amd64.exe $(MAIN_PATH)
-	@echo "✓ Releases built in $(BUILD_DIR)/releases"
+	goreleaser release
 
 .DEFAULT_GOAL := help
+
+-include .env
+export
