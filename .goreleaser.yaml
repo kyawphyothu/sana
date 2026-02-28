@@ -38,3 +38,13 @@ archives:
       {{- if eq .Arch "amd64" }}x86_64
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
+
+brews:
+  - repository:
+      owner: kyawphyothu
+      name: homebrew-tap
+    homepage: "https://github.com/kyawphyothu/sana"
+    description: "A simple terminal-based expense tracker built with Go"
+    license: "MIT"
+    install: |
+      bin.install "sana"
