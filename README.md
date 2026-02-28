@@ -10,6 +10,38 @@ A simple terminal-based expense tracker built with Go.
 - View expense summary by category
 - View monthly report of expenses
 
+## Installation
+
+##### Linux:
+
+Ubuntu/Debian:
+```bash
+curl -LO https://github.com/kyawphyothu/sana/releases/latest/download/sana_0.1.4_linux_amd64.deb
+sudo dpkg -i sana_0.1.4_linux_amd64.deb
+sudo apt -f install -y
+```
+
+Fedora/RHEL:
+```bash
+curl -LO https://github.com/kyawphyothu/sana/releases/latest/download/sana_0.1.4_linux_amd64.rpm
+sudo dnf install -y ./sana_0.1.4_linux_amd64.rpm
+```
+
+Any Linux distribution:
+```bash
+curl -LO https://github.com/kyawphyothu/sana/releases/latest/download/sana_Linux_x86_64.tar.gz
+tar -xzf sana_Linux_x86_64.tar.gz
+cd sana
+sudo mv sana /usr/local/bin/
+```
+
+##### macOS:
+
+```bash
+brew install sana
+```
+
+
 ## Usage
 
 ### Run the development application
