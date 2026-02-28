@@ -38,6 +38,7 @@ sudo mv sana /usr/local/bin/
 ##### macOS:
 
 ```bash
+brew tap kyawphyothu/tap
 brew install sana
 ```
 
