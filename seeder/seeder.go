@@ -93,10 +93,7 @@ func main() {
 	}
 
 	for _, e := range expenses {
-		_, err := db.Exec(
-			`INSERT INTO expenses (date, amount, description, expense_type) VALUES (?, ?, ?, ?)`,
-			e.Date, e.Amount, e.Description, string(e.Type),
-		)
+		_, err := database.CreateExpense(db, e.Date, e.Amount, e.Description, e.Type)
 		if err != nil {
 			fmt.Println("Error inserting expense:", err)
 			os.Exit(1)
