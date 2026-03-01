@@ -39,12 +39,19 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
 
-brews:
+homebrew_casks:
   - repository:
       owner: kyawphyothu
       name: homebrew-tap
     homepage: "https://github.com/kyawphyothu/sana"
     description: "A simple terminal-based expense tracker built with Go"
-    license: "MIT"
-    install: |
-      bin.install "sana"
+    binaries:
+      - sana
+    url:
+      verified: github.com/kyawphyothu/sana
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/sana"]
+          end
