@@ -8,9 +8,9 @@ import (
 )
 
 // DateTimeStorageFormat is the layout used to store datetimes in SQLite.
-// Produces strings like "2026-02-21 14:34:13.533122+00:00" (UTC).
-// SQLite's strftime() still parses the date part for queries.
-const DateTimeStorageFormat = "2006-01-02 15:04:05.999999-07:00"
+// Stores local time WITHOUT timezone offset so SQLite's strftime() works
+// directly on the local date/time parts for grouping and filtering.
+const DateTimeStorageFormat = "2006-01-02 15:04:05.999999"
 
 // ListExpenses returns all expenses from the database, ordered by date descending.
 func ListExpenses(db *sql.DB, date time.Time) ([]types.Expense, error) {
@@ -115,9 +115,8 @@ func GetTotalExpenses(db *sql.DB, date time.Time) (float64, error) {
 }
 
 // CreateExpense inserts a new expense and returns the new ID.
-// Store date in DateTimeStorageFormat (e.g. 2026-02-21 14:34:13.533122+00:00) so it's consistent and SQLite's strftime() works.
 func CreateExpense(db *sql.DB, date time.Time, amount float64, description string, expenseType types.ExpenseType) (int64, error) {
-	dateStr := date.UTC().Format(DateTimeStorageFormat)
+	dateStr := date.Local().Format(DateTimeStorageFormat)
 	res, err := db.Exec(`
 		INSERT INTO expenses (date, amount, description, expense_type)
 		VALUES (?, ?, ?, ?)

@@ -102,7 +102,6 @@ func (m model) renderExpenseRow(expense types.Expense, widths expenseColumnWidth
 	if len(desc) > widths.Desc {
 		desc = desc[:widths.Desc-descTruncateSuffix] + "..."
 	}
-	localDate := expense.Date.Local()
 	formattedAmount := formatAmountWithCommas(expense.Amount)
 	categoryText := expense.Type.String()
 
@@ -119,7 +118,7 @@ func (m model) renderExpenseRow(expense types.Expense, widths expenseColumnWidth
 		baseStyle = baseStyle.Bold(true)
 	}
 
-	datePart := baseStyle.Width(widths.Date).Align(lipgloss.Left).Render(localDate.Format("2006-01-02 15:04:05"))
+	datePart := baseStyle.Width(widths.Date).Align(lipgloss.Left).Render(expense.Date.Format("2006-01-02 15:04:05"))
 	descPart := baseStyle.Width(widths.Desc).Align(lipgloss.Left).Render(desc)
 	categoryColor := CategoryColor(categoryText)
 	if isSelected {

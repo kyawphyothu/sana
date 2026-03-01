@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"time"
 )
 
 const createMigrationsTable = `
@@ -14,8 +15,9 @@ CREATE TABLE IF NOT EXISTS _migrations (
 
 // migrations run in order. Add new migrations to the end of the slice.
 var migrations = []struct {
-	name string
-	sql  string
+	name   string
+	sql    string
+	goFunc func(db *sql.DB) error
 }{
 	{
 		name: "001_initial",
@@ -29,6 +31,10 @@ CREATE TABLE IF NOT EXISTS expenses (
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );`,
+	},
+	{
+		name:   "002_utc_to_local_timezone",
+		goFunc: migrateUTCToLocal,
 	},
 }
 
@@ -47,8 +53,15 @@ func Migrate(db *sql.DB) error {
 			continue
 		}
 
-		if _, err := db.Exec(m.sql); err != nil {
-			return fmt.Errorf("migration %s: %w", m.name, err)
+		if m.sql != "" {
+			if _, err := db.Exec(m.sql); err != nil {
+				return fmt.Errorf("migration %s: %w", m.name, err)
+			}
+		}
+		if m.goFunc != nil {
+			if err := m.goFunc(db); err != nil {
+				return fmt.Errorf("migration %s: %w", m.name, err)
+			}
 		}
 		if _, err := db.Exec("INSERT INTO _migrations (name) VALUES (?)", m.name); err != nil {
 			return fmt.Errorf("record migration %s: %w", m.name, err)
@@ -62,4 +75,59 @@ func migrationApplied(db *sql.DB, name string) (bool, error) {
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM _migrations WHERE name = ?", name).Scan(&count)
 	return count > 0, err
+}
+
+// migrateUTCToLocal converts all expense date values from UTC to local timezone.
+// Previously dates were stored with UTC offset (e.g. "2026-02-28 23:30:00+00:00").
+// Now we store local time without offset so SQLite strftime works on local dates.
+func migrateUTCToLocal(db *sql.DB) error {
+	rows, err := db.Query("SELECT id, date FROM expenses")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type record struct {
+		id   int64
+		date string
+	}
+	var records []record
+	for rows.Next() {
+		var r record
+		if err := rows.Scan(&r.id, &r.date); err != nil {
+			return err
+		}
+		records = append(records, r)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	utcFormats := []string{
+		"2006-01-02 15:04:05.999999-07:00",
+		"2006-01-02T15:04:05.999999Z",
+		"2006-01-02T15:04:05Z",
+		"2006-01-02 15:04:05-07:00",
+		"2006-01-02 15:04:05",
+	}
+
+	for _, r := range records {
+		var t time.Time
+		var parsed bool
+		for _, format := range utcFormats {
+			t, err = time.Parse(format, r.date)
+			if err == nil {
+				parsed = true
+				break
+			}
+		}
+		if !parsed {
+			continue
+		}
+		localStr := t.Local().Format(DateTimeStorageFormat)
+		if _, err := db.Exec("UPDATE expenses SET date = ? WHERE id = ?", localStr, r.id); err != nil {
+			return err
+		}
+	}
+	return nil
 }

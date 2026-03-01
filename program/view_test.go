@@ -89,7 +89,7 @@ func TestRenderOverlayExpenseRow(t *testing.T) {
 	widths := overlayColumnWidths{Date: 10, Description: 20, Amount: 10}
 	exp := types.Expense{
 		ID:          1,
-		Date:        time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+		Date:        time.Date(2025, 1, 15, 0, 0, 0, 0, time.Local),
 		Amount:      1234.56,
 		Description: "Lunch",
 		Type:        types.ExpenseTypeFood,

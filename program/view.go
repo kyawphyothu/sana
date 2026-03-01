@@ -290,9 +290,8 @@ func (m model) renderOverlayExpenseRow(expense types.Expense, widths overlayColu
 		desc = desc[:widths.Description-descTruncateSuffix] + "..."
 	}
 
-	localDate := expense.Date.Local()
 	formattedAmount := formatAmountWithCommas(expense.Amount)
-	datePart := m.styles.Line.Width(widths.Date).Align(lipgloss.Left).Render(localDate.Format("2006-01-02"))
+	datePart := m.styles.Line.Width(widths.Date).Align(lipgloss.Left).Render(expense.Date.Format("2006-01-02"))
 	descriptionPart := m.styles.Line.Width(widths.Description).Align(lipgloss.Left).Render(desc)
 	amountPart := m.styles.Line.Width(widths.Amount).Align(lipgloss.Right).Render(formattedAmount)
 	spacingStr := m.styles.Line.Render("  ")
@@ -386,11 +385,10 @@ func (m model) renderConfirmDeleteOverlay() string {
 	}
 
 	expense := m.data.expenses[selectedIdx]
-	localDate := expense.Date.Local()
 	formattedAmount := formatAmountWithCommas(expense.Amount)
 
 	var content strings.Builder
-	content.WriteString(m.styles.Line.Render(fmt.Sprintf("Date:     %s", localDate.Format("2006-01-02 15:04:05"))))
+	content.WriteString(m.styles.Line.Render(fmt.Sprintf("Date:     %s", expense.Date.Format("2006-01-02 15:04:05"))))
 	content.WriteString("\n")
 	content.WriteString(m.styles.Line.Render(fmt.Sprintf("Type:     %s", expense.Type.String())))
 	content.WriteString("\n")

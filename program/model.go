@@ -419,8 +419,6 @@ func (m *model) addFormSubmit() tea.Cmd {
 			)
 		}
 	}
-	// Convert to UTC before storing
-	date = date.UTC()
 	expType, ok := types.ParseExpenseType(typeStr)
 	if !ok {
 		expType = types.ExpenseTypeOther
