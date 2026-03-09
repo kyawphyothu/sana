@@ -28,6 +28,14 @@ build: ## Build the binary
 run: ## Run the application
 	SANA_ENV=development $(GO) run $(MAIN_PATH)
 
+.PHONY: list
+list: 
+	SANA_ENV=development $(GO) run $(MAIN_PATH) list
+
+.PHONY: add
+add:
+	SANA_ENV=development $(GO) run $(MAIN_PATH) add
+
 .PHONY: run-prod
 run-prod: ## Run the production application
 	$(GO) run $(MAIN_PATH)

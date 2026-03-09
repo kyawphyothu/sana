@@ -3,7 +3,6 @@ package program
 import (
 	"database/sql"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/kyawphyothu/sana/database"
+	"github.com/kyawphyothu/sana/expense"
 	"github.com/kyawphyothu/sana/types"
 )
 
@@ -385,49 +385,20 @@ func (m *model) isValueCompleteSuggestion() bool {
 	return false
 }
 
-// addFormSubmit validates inputs, creates expense, and returns a command that sends expenseCreatedMsg or formValidationErrMsg.
+// addFormSubmit gathers form values and runs the shared expense.AddExpense (validation + create).
+// Validation errors are returned as formValidationErrMsg so the TUI can display them.
 func (m *model) addFormSubmit() tea.Cmd {
-	desc := strings.TrimSpace(m.form.description.Value())
-	amountStr := strings.TrimSpace(m.form.amount.Value())
-	dateStr := strings.TrimSpace(m.form.date.Value())
-	typeStr := strings.TrimSpace(m.form.typeField.Value())
-
-	amount, err := strconv.ParseFloat(amountStr, 64)
-	if err != nil || amount <= 0 {
-		return func() tea.Msg { return formValidationErrMsg{Err: fmt.Errorf("amount must be a positive number")} }
-	}
-	var date time.Time
-	if dateStr == "" || strings.ToLower(dateStr) == "today" {
-		date = time.Now()
-	} else {
-		// Try parsing as "YYYY-MM-DD HH:MM:SS" first
-		date, err = time.ParseInLocation("2006-01-02 15:04:05", dateStr, time.Local)
-		if err != nil {
-			// If that fails, try parsing as "YYYY-MM-DD" and add current time
-			date, err = time.ParseInLocation("2006-01-02", dateStr, time.Local)
-			if err != nil {
-				return func() tea.Msg {
-					return formValidationErrMsg{Err: fmt.Errorf("date must be YYYY-MM-DD or YYYY-MM-DD HH:MM:SS or 'today'")}
-				}
-			}
-			// Add current time's hour, minute, and second in local timezone
-			now := time.Now()
-			date = time.Date(
-				date.Year(), date.Month(), date.Day(),
-				now.Hour(), now.Minute(), now.Second(), now.Nanosecond(),
-				time.Local,
-			)
-		}
-	}
-	expType, ok := types.ParseExpenseType(typeStr)
-	if !ok {
-		expType = types.ExpenseTypeOther
-	}
-
+	amountStr := m.form.amount.Value()
+	desc := m.form.description.Value()
+	typeStr := m.form.typeField.Value()
+	dateStr := m.form.date.Value()
 	db := m.db
 	return func() tea.Msg {
-		_, err := database.CreateExpense(db, date, amount, desc, expType)
-		return expenseCreatedMsg{Err: err}
+		_, err := expense.AddExpense(db, amountStr, desc, typeStr, dateStr)
+		if err != nil {
+			return formValidationErrMsg{Err: err}
+		}
+		return expenseCreatedMsg{}
 	}
 }
 
