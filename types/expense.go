@@ -9,12 +9,15 @@ import (
 type ExpenseType string
 
 const (
-	ExpenseTypeFood      ExpenseType = "food"
-	ExpenseTypeTransport ExpenseType = "transport"
-	ExpenseTypeBills     ExpenseType = "bills"
-	ExpenseTypeShopping  ExpenseType = "shopping"
-	ExpenseTypeHealth    ExpenseType = "health"
-	ExpenseTypeOther     ExpenseType = "other"
+	ExpenseTypeFood          ExpenseType = "food"
+	ExpenseTypeTransport     ExpenseType = "transport"
+	ExpenseTypeBills         ExpenseType = "bills"
+	ExpenseTypeShopping      ExpenseType = "shopping"
+	ExpenseTypeHealth        ExpenseType = "health"
+	ExpenseTypePersonalCare  ExpenseType = "personal_care"
+	ExpenseTypeEntertainment ExpenseType = "entertainment"
+	ExpenseTypeEducation     ExpenseType = "education"
+	ExpenseTypeOther         ExpenseType = "other"
 )
 
 // AllExpenseTypes returns every type for dropdowns, lists, and validation.
@@ -25,6 +28,9 @@ func AllExpenseTypes() []ExpenseType {
 		ExpenseTypeBills,
 		ExpenseTypeShopping,
 		ExpenseTypeHealth,
+		ExpenseTypePersonalCare,
+		ExpenseTypeEntertainment,
+		ExpenseTypeEducation,
 		ExpenseTypeOther,
 	}
 }
@@ -64,6 +70,12 @@ func (e ExpenseType) String() string {
 		return "Shopping"
 	case ExpenseTypeHealth:
 		return "Health"
+	case ExpenseTypePersonalCare:
+		return "Personal Care"
+	case ExpenseTypeEntertainment:
+		return "Entertainment"
+	case ExpenseTypeEducation:
+		return "Education"
 	case ExpenseTypeOther:
 		return "Other"
 	default:

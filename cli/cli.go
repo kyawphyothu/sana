@@ -36,7 +36,7 @@ func runAdd(db *sql.DB, args []string) (handled bool, exitCode int) {
 	fs := flag.NewFlagSet("add", flag.ExitOnError)
 	amountF := fs.Float64("amount", 0, "Expense amount (required)")
 	descF := fs.String("description", "", "Expense description (required)")
-	typeF := fs.String("type", string(types.ExpenseTypeOther), "Category: food, transport, bills, shopping, health, other")
+	typeF := fs.String("type", string(types.ExpenseTypeOther), "Category: food, transport, bills, shopping, health, personal_care, entertainment, education, other")
 	dateF := fs.String("date", "", "Date as YYYY-MM-DD or 'today' (default: today)")
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: sana add -amount <n> -description <text> [-type <cat>] [-date YYYY-MM-DD]\n")

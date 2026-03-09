@@ -12,7 +12,7 @@ const (
 
 	// Table column widths
 	tableDateWidth          = 21
-	tableCategoryWidth      = 12
+	tableCategoryWidth      = 14 // must fit "Personal Care" and "Entertainment" (13 chars)
 	tableAmountWidth        = 12
 	tableAmountWidthSummary = 15
 	tableCountWidth         = 5

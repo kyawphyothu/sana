@@ -317,6 +317,12 @@ func CategoryColor(category string) color.Color {
 		return lipgloss.Color("#FFD93D") // warm yellow
 	case "Health":
 		return lipgloss.Color("#A66CFF") // violet
+	case "Personal Care":
+		return lipgloss.Color("#2EC4B6") // teal
+	case "Entertainment":
+		return lipgloss.Color("#F72585") // magenta
+	case "Education":
+		return lipgloss.Color("#4361EE") // indigo
 	case "Other":
 		return lipgloss.Color("#9AA0B5") // gray-purple
 	default:
@@ -337,6 +343,12 @@ func CategoryColorSelected(category string) color.Color {
 		return lipgloss.Color("#C9A227") // warm yellow
 	case "Health":
 		return lipgloss.Color("#6E3FCC") // violet
+	case "Personal Care":
+		return lipgloss.Color("#0D7377") // dark teal
+	case "Entertainment":
+		return lipgloss.Color("#B5179E") // dark magenta
+	case "Education":
+		return lipgloss.Color("#3A0CA3") // dark indigo
 	case "Other":
 		return lipgloss.Color("#5F657A") // gray-purple
 	default:
