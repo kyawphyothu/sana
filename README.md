@@ -9,6 +9,7 @@ A simple terminal-based expense tracker built with Go.
 - Track expenses with date, description, category, and amount
 - View expense summary by category
 - View monthly report of expenses
+- **CLI** – add, delete, and list expenses from the command line (no TUI)
 
 ## Installation
 
@@ -47,23 +48,56 @@ brew install --cask sana
 
 ## Usage
 
-### Run the development application
+Sana can be used in two ways: **TUI** (interactive) or **CLI** (subcommands and flags).
+
+### TUI (interactive)
+
+Run with no arguments to start the terminal UI:
 
 ```bash
-make run
+make run          # development (data in ./data)
+make run-prod     # or: sana (uses config dir)
 ```
 
-### Run the production application
+Or after installing: `sana` (no args).
+
+### CLI (command line)
+
+Use subcommands to add, delete, or list expenses without the TUI. Handy for scripts or quick one-liners.
+
+**List** expenses for a month (default: current month):
 
 ```bash
-make run-prod
+sana list                    # current month
+sana list -month 2025-03     # specific month (YYYY-MM)
 ```
 
-or
+**Add** an expense:
 
 ```bash
-make install
-sana
+sana add -amount 25.50 -description "Coffee"
+sana add -amount 100 -description "Rent" -type bills -date 2025-03-01
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `-amount` | yes | Expense amount (positive number) |
+| `-description` | yes | Short description |
+| `-type` | no | Category: `food`, `transport`, `bills`, `shopping`, `health`, `other` (default: other) |
+| `-date` | no | Date as `YYYY-MM-DD` or `today` (default: today) |
+
+**Delete** an expense by ID:
+
+```bash
+sana delete -id 42
+```
+
+Get help for a subcommand:
+
+```bash
+sana add -h
+sana list -h
+sana delete -h
 ```
 
 ## Keybindings
